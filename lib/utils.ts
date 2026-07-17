@@ -19,3 +19,15 @@ export function formatLastSeen(date: string | Date): string {
   if (hours < 24) return `Last seen ${hours}h ago`;
   return `Last seen ${Math.floor(hours / 24)}d ago`;
 }
+
+/**
+ * Same idea as formatLastSeen but for mock creator data where presence is
+ * stored as a plain lastSeenMinutes/isOnline pair rather than a timestamp.
+ */
+export function formatPresence(isOnline: boolean, lastSeenMinutes: number): string {
+  if (isOnline) return "Active now";
+  if (lastSeenMinutes < 60) return `Last seen ${lastSeenMinutes}m ago`;
+  const hours = Math.floor(lastSeenMinutes / 60);
+  if (hours < 24) return `Last seen ${hours}h ago`;
+  return `Last seen ${Math.floor(hours / 24)}d ago`;
+}

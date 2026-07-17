@@ -25,7 +25,7 @@ const defaultItems: NavItem[] = [
   { label: "Discover", href: "/discover" },
   { label: "Chats", href: "/chats" },
   { label: "Dashboard", href: "/dashboard" },
-  { label: "Inbox", href: "/inbox" },
+  { label: "Settings", href: "/settings" },
 ];
 
 /** Primary top navigation. Hidden below `md`; pair with BottomNav on mobile. */

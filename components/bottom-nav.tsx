@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Compass, MessagesSquare, LayoutGrid, Inbox, type LucideIcon } from "lucide-react";
+import { Compass, MessagesSquare, LayoutGrid, Settings, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface BottomNavItem {
@@ -16,7 +16,7 @@ const defaultItems: BottomNavItem[] = [
   { label: "Discover", href: "/discover", icon: Compass },
   { label: "Chats", href: "/chats", icon: MessagesSquare },
   { label: "Dashboard", href: "/dashboard", icon: LayoutGrid },
-  { label: "Inbox", href: "/inbox", icon: Inbox, badge: 2 },
+  { label: "Settings", href: "/settings", icon: Settings },
 ];
 
 export interface BottomNavProps {
