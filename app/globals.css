@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+ * Design tokens as CSS custom properties.
+ * Mirrors lib/tokens.ts — keep both in sync if a value changes.
+ * Colors are stored as raw hex; Tailwind config wraps them for utility use.
+ * ------------------------------------------------------------------------- */
+@layer base {
+  :root {
+    --background: #faf8f4; /* warm white */
+    --foreground: #1c1b19;
+    --surface: #ffffff;
+    --surface-muted: #efede7; /* soft grey */
+    --border: #e2dfd7;
+
+    /* Primary, interactive brand color */
+    --emerald: #0e8f63;
+    --emerald-foreground: #ffffff;
+
+    /* Reserved accents: amber = warnings / urgent countdowns / chats
+       expiring soon only. violet = sponsored boosts / promo labels only. */
+    --amber: #c8862a;
+    --amber-foreground: #ffffff;
+    --violet: #6c5dc7;
+    --violet-foreground: #ffffff;
+
+    --success: #3f7d3a;
+    --success-bg: #e5f1e2;
+    --danger: #c6433e;
+    --danger-bg: #fbe7e5;
+    --warning: #c8862a;
+    --warning-bg: #f7ecd9;
+    --info: #3e63c4;
+    --info-bg: #e7ecfa;
+
+    --text-primary: #1c1b19;
+    --text-secondary: #57544d;
+    --text-muted: #8c8880;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+    --radius-pill: 999px;
+
+    --shadow-sm: 0 1px 2px 0 rgb(20 20 28 / 0.06);
+    --shadow-md: 0 4px 12px -2px rgb(20 20 28 / 0.1);
+    --shadow-lg: 0 12px 32px -8px rgb(20 20 28 / 0.18);
+
+    --motion-fast: 120ms;
+    --motion-base: 200ms;
+    --motion-slow: 320ms;
+    --motion-easing: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .dark {
+    --background: #0d0e0f; /* near-black */
+    --foreground: #f2f0ec;
+    --surface: #1a1b1d; /* charcoal */
+    --surface-muted: #232426;
+    --border: #2e2f32;
+
+    --emerald: #34c98a;
+    --emerald-foreground: #08150f;
+
+    --amber: #f2b84b;
+    --amber-foreground: #14141c;
+    --violet: #8b7fd6;
+    --violet-foreground: #14141c;
+
+    --success: #7fc274;
+    --success-bg: #17281a;
+    --danger: #e97874;
+    --danger-bg: #391e1f;
+    --warning: #f2b84b;
+    --warning-bg: #3a2e15;
+    --info: #8fa6e8;
+    --info-bg: #1d2740;
+
+    --text-primary: #f2f0ec;
+    --text-secondary: #b7b3ab;
+    --text-muted: #7a766e;
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 16px -2px rgb(0 0 0 / 0.4);
+    --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.5);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  /* Tabular, feature-locked numerals for anything time- or metric-based. */
+  .font-mono-data {
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--emerald);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
