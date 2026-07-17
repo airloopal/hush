@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Camera, MessageCircle, ShieldAlert, Video } from "lucide-react";
 
 import { NavigationBar } from "@/components/navigation-bar";
@@ -12,18 +12,21 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CategoryPill } from "@/components/ui/category-pill";
-import { useToast } from "@/components/ui/use-toast";
+import { UnlockChatModal } from "@/components/unlock-chat-modal";
+import { Countdown } from "@/components/countdown";
 import { useRequireAccount } from "@/lib/use-account-guard";
 import { hasAdultAccess } from "@/lib/account";
 import { findCreatorByUsername } from "@/lib/discovery";
 import { MOCK_CREATORS } from "@/lib/creators";
+import { findActiveSession, findLatestSession } from "@/lib/chat";
 import { formatPresence } from "@/lib/utils";
 import type { Account } from "@/lib/types";
+import type { ChatSession } from "@/lib/chat-types";
 
 export default function CreatorProfilePage() {
   const params = useParams<{ username: string }>();
+  const router = useRouter();
   const { ready, account } = useRequireAccount();
-  const { toast } = useToast();
 
   if (!ready || !account) return null;
 
@@ -110,20 +113,64 @@ export default function CreatorProfilePage() {
             </div>
           </div>
 
-          <Button
-            onClick={() =>
-              toast({
-                title: "Unlock chat",
-                description: "Payments aren't wired up yet — this is a Stage 1 UI placeholder.",
-                variant: "default",
-              })
-            }
-          >
-            Unlock Chat
-          </Button>
+          {account.role === "fan" ? (
+            <ChatCta creator={creator} fanUsername={account.username} router={router} />
+          ) : (
+            <p className="text-xs text-text-muted">
+              Only fan accounts can unlock chat access with a creator.
+            </p>
+          )}
         </CardContent>
       </Card>
     </ProfileShell>
+  );
+}
+
+/** CTA button whose label/action depends on any existing session with this creator. */
+function ChatCta({
+  creator,
+  fanUsername,
+  router,
+}: {
+  creator: NonNullable<ReturnType<typeof findCreatorByUsername>>;
+  fanUsername: string;
+  router: ReturnType<typeof useRouter>;
+}) {
+  const [session, setSession] = React.useState<ChatSession | undefined>(undefined);
+  const [checked, setChecked] = React.useState(false);
+
+  React.useEffect(() => {
+    setSession(
+      findActiveSession(fanUsername, creator.username) ?? findLatestSession(fanUsername, creator.username)
+    );
+    setChecked(true);
+  }, [fanUsername, creator.username]);
+
+  if (!checked) return null;
+
+  const active = session && findActiveSession(fanUsername, creator.username);
+
+  if (active) {
+    return (
+      <div className="flex items-center gap-3">
+        <Button onClick={() => router.push(`/chats/${creator.username}`)}>Continue Chat</Button>
+        <Countdown target={active.expiresAt} variant="compact" />
+      </div>
+    );
+  }
+
+  return (
+    <UnlockChatModal
+      creatorId={creator.id}
+      creatorUsername={creator.username}
+      fanUsername={fanUsername}
+      chatPrice={creator.chatPrice}
+      photoPrice={creator.photoPrice}
+      videoPrice={creator.videoPrice}
+      mode={session ? "renew" : "new"}
+      triggerLabel={session ? "Unlock Another 24 Hours" : "Unlock Chat"}
+      onUnlocked={() => router.push(`/chats/${creator.username}`)}
+    />
   );
 }
 
