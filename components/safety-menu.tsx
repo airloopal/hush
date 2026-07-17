@@ -28,14 +28,16 @@ const REPORT_REASONS = [
 
 export interface SafetyMenuProps {
   session: ChatSession;
+  viewerRole: "fan" | "creator";
   onBlocked: () => void;
 }
 
 /** Prototype safety menu — local-only, no moderation backend. */
-export function SafetyMenu({ session, onBlocked }: SafetyMenuProps) {
+export function SafetyMenu({ session, viewerRole, onBlocked }: SafetyMenuProps) {
   const { toast } = useToast();
   const [open, setOpen] = React.useState(false);
   const [view, setView] = React.useState<View>("menu");
+  const counterpartUsername = viewerRole === "fan" ? session.creatorUsername : session.fanUsername;
 
   function close() {
     setOpen(false);
@@ -52,6 +54,7 @@ export function SafetyMenu({ session, onBlocked }: SafetyMenuProps) {
   }
 
   function handleBlock() {
+    if (viewerRole !== "fan") return;
     blockCreator(session.creatorUsername);
     onBlocked();
     toast({
@@ -80,11 +83,13 @@ export function SafetyMenu({ session, onBlocked }: SafetyMenuProps) {
           <>
             <ModalHeader>
               <ModalTitle>Safety</ModalTitle>
-              <ModalDescription>Options for this conversation with @{session.creatorUsername}.</ModalDescription>
+              <ModalDescription>Options for this conversation with @{counterpartUsername}.</ModalDescription>
             </ModalHeader>
             <div className="flex flex-col gap-1">
               <SafetyMenuItem icon={Flag} label="Report conversation" onClick={() => setView("report")} />
-              <SafetyMenuItem icon={UserX} label="Block creator" onClick={() => setView("block")} />
+              {viewerRole === "fan" && (
+                <SafetyMenuItem icon={UserX} label="Block creator" onClick={() => setView("block")} />
+              )}
               <SafetyMenuItem icon={CreditCard} label="Payment issue" onClick={() => setView("payment")} />
               <SafetyMenuItem icon={Hash} label="Conversation reference" onClick={() => setView("reference")} />
             </div>

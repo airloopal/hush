@@ -45,7 +45,7 @@ export interface ChatMessage {
 }
 
 export type MediaType = "photo" | "video";
-export type MediaPurchaseStatus = "requested";
+export type MediaPurchaseStatus = "requested" | "fulfilled" | "dismissed";
 
 export interface MediaPurchase {
   id: string;

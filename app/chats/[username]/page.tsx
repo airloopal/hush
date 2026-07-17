@@ -16,6 +16,8 @@ import { ChatComposer } from "@/components/chat-composer";
 import { UnlockChatModal } from "@/components/unlock-chat-modal";
 import { BuyMediaModal } from "@/components/buy-media-modal";
 import { SafetyMenu } from "@/components/safety-menu";
+import { MediaRequestCard } from "@/components/media-request-card";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { useRequireAccount } from "@/lib/use-account-guard";
 import { hasAdultAccess } from "@/lib/account";
 import { MOCK_CREATORS } from "@/lib/creators";
@@ -23,12 +25,14 @@ import { findCreatorByUsername } from "@/lib/discovery";
 import {
   addMessage,
   findLatestSession,
+  getConversationStatus,
   getMessagesForPair,
+  getPendingMediaPurchasesForSession,
   isCreatorBlocked,
   isSessionActive,
 } from "@/lib/chat";
 import { formatPresence } from "@/lib/utils";
-import type { ChatMessage, ChatSession } from "@/lib/chat-types";
+import type { ChatMessage, ChatSession, MediaPurchase } from "@/lib/chat-types";
 
 export default function ActiveChatPage() {
   const params = useParams<{ username: string }>();
@@ -112,6 +116,9 @@ function ChatConversation({
   );
   const [isExpired, setIsExpired] = React.useState<boolean>(() => (session ? !isSessionActive(session) : true));
   const [blocked, setBlocked] = React.useState<boolean>(() => isCreatorBlocked(creatorUsername));
+  const [pendingPurchases, setPendingPurchases] = React.useState<MediaPurchase[]>(() =>
+    session ? getPendingMediaPurchasesForSession(session.id) : []
+  );
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -122,10 +129,15 @@ function ChatConversation({
     setMessages(getMessagesForPair(fanUsername, creatorUsername));
   }
 
+  function refreshPendingPurchases(activeSession: ChatSession) {
+    setPendingPurchases(getPendingMediaPurchasesForSession(activeSession.id));
+  }
+
   function handleUnlocked(newSession: ChatSession) {
     setSession(newSession);
     setIsExpired(false);
     refreshThread();
+    refreshPendingPurchases(newSession);
   }
 
   function handleSend(body: string) {
@@ -136,6 +148,12 @@ function ChatConversation({
 
   function handlePurchased() {
     refreshThread();
+    if (session) refreshPendingPurchases(session);
+  }
+
+  function handleMediaResolved() {
+    refreshThread();
+    if (session) refreshPendingPurchases(session);
   }
 
   const activeHref = isFanViewer ? "/chats" : "/dashboard";
@@ -153,7 +171,7 @@ function ChatConversation({
   return (
     <ChatShell activeHref={activeHref} username={viewerUsername}>
       <div className="flex h-[calc(100vh-8.5rem)] max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-surface md:h-[calc(100vh-6rem)]">
-        <header className="flex items-center gap-3 border-b border-border p-3">
+        <header className="flex flex-wrap items-center gap-2 border-b border-border p-3">
           <Avatar src={headerAvatar} alt={headerUsername} size="md" online={isFanViewer ? mockCreator?.isOnline : undefined} />
           <div className="flex min-w-0 flex-1 flex-col">
             <span className="truncate font-semibold leading-tight">@{headerUsername}</span>
@@ -164,7 +182,16 @@ function ChatConversation({
           ) : session ? (
             <span className="font-mono-data text-xs text-danger">Expired</span>
           ) : null}
-          {isFanViewer && session && <SafetyMenu session={session} onBlocked={() => setBlocked(true)} />}
+          {session && (
+            <StatusBadge status={getConversationStatus(session, isFanViewer ? blocked : false)} />
+          )}
+          {session && (
+            <SafetyMenu
+              session={session}
+              viewerRole={isFanViewer ? "fan" : "creator"}
+              onBlocked={() => setBlocked(true)}
+            />
+          )}
         </header>
 
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
@@ -194,6 +221,14 @@ function ChatConversation({
           )}
           <div ref={messagesEndRef} />
         </div>
+
+        {!isFanViewer && pendingPurchases.length > 0 && (
+          <div className="flex flex-col gap-2 border-t border-border p-3">
+            {pendingPurchases.map((purchase) => (
+              <MediaRequestCard key={purchase.id} purchase={purchase} onResolved={handleMediaResolved} />
+            ))}
+          </div>
+        )}
 
         {isFanViewer && session && (
           <div className="flex flex-wrap gap-2 border-t border-border p-3">

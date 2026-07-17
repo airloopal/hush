@@ -1,9 +1,9 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { Circle, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { Ban, Circle, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type StatusKind = "draft" | "pending" | "live" | "completed" | "expired";
+export type StatusKind = "draft" | "pending" | "live" | "completed" | "expired" | "expiring" | "blocked";
 
 const statusBadgeVariants = cva(
   "inline-flex items-center gap-1.5 rounded-pill border px-2.5 py-1 text-xs font-medium",
@@ -15,6 +15,9 @@ const statusBadgeVariants = cva(
         live: "border-transparent bg-success-bg text-success",
         completed: "border-transparent bg-info-bg text-info",
         expired: "border-transparent bg-danger-bg text-danger",
+        // Amber is reserved for warnings/expiring-soon states — see lib/tokens.ts.
+        expiring: "border-transparent bg-amber/15 text-amber",
+        blocked: "border-transparent bg-danger-bg text-danger",
       } satisfies Record<StatusKind, string>,
     },
     defaultVariants: { status: "draft" },
@@ -27,6 +30,8 @@ const statusConfig: Record<StatusKind, { label: string; icon: React.ElementType;
   live: { label: "Live", icon: Circle, pulse: true },
   completed: { label: "Completed", icon: CheckCircle2 },
   expired: { label: "Expired", icon: AlertCircle },
+  expiring: { label: "Expiring Soon", icon: Clock },
+  blocked: { label: "Blocked", icon: Ban },
 };
 
 export interface StatusBadgeProps

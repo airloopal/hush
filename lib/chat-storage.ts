@@ -62,7 +62,7 @@ function isValidMediaPurchase(value: unknown): value is MediaPurchase {
     isNonEmptyString(p.fanUsername) &&
     (p.mediaType === "photo" || p.mediaType === "video") &&
     isNonEmptyString(p.price) &&
-    p.status === "requested" &&
+    (p.status === "requested" || p.status === "fulfilled" || p.status === "dismissed") &&
     isValidIsoDate(p.requestedAt)
   );
 }

@@ -49,6 +49,40 @@ export function getRemainingMs(session: ChatSession): number {
   return Math.max(0, new Date(session.expiresAt).getTime() - Date.now());
 }
 
+/** Single source of truth for the "expiring soon" threshold across the app. */
+export const EXPIRING_SOON_MS = 6 * 60 * 60 * 1000;
+
+export function isExpiringSoon(session: ChatSession): boolean {
+  return isSessionActive(session) && getRemainingMs(session) < EXPIRING_SOON_MS;
+}
+
+function isSameCalendarDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+export function isExpiringToday(session: ChatSession): boolean {
+  return isSessionActive(session) && isSameCalendarDay(new Date(session.expiresAt), new Date());
+}
+
+/**
+ * Conversation status badge for the creator/fan chat header and dashboard.
+ * Derives from the same expiry helpers above — never a second source of
+ * truth for whether a session is active.
+ */
+export function getConversationStatus(
+  session: ChatSession,
+  isBlocked: boolean
+): "blocked" | "expired" | "expiring" | "live" {
+  if (isBlocked) return "blocked";
+  if (!isSessionActive(session)) return "expired";
+  if (isExpiringSoon(session)) return "expiring";
+  return "live";
+}
+
 // ---------------------------------------------------------------------------
 // Session lookup
 // ---------------------------------------------------------------------------
@@ -216,6 +250,92 @@ export function createMediaPurchase(
     "media-request"
   );
   return purchase;
+}
+
+export function getPendingMediaPurchasesForSession(sessionId: string): MediaPurchase[] {
+  return getMediaPurchasesForSession(sessionId).filter((p) => p.status === "requested");
+}
+
+export function getPendingMediaPurchasesForCreator(creatorUsername: string): MediaPurchase[] {
+  return getAllMediaPurchases().filter(
+    (p) => p.creatorUsername === creatorUsername && p.status === "requested"
+  );
+}
+
+function setMediaPurchaseStatus(
+  purchaseId: string,
+  status: MediaPurchase["status"]
+): MediaPurchase | undefined {
+  const all = getAllMediaPurchases();
+  const index = all.findIndex((p) => p.id === purchaseId);
+  if (index === -1) return undefined;
+  const updated: MediaPurchase = { ...all[index], status };
+  const next = [...all];
+  next[index] = updated;
+  saveAllMediaPurchases(next);
+  return updated;
+}
+
+/** Prototype fulfillment only — no real upload. Adds a delivery system message. */
+export function fulfillMediaPurchase(purchase: MediaPurchase): MediaPurchase | undefined {
+  const updated = setMediaPurchaseStatus(purchase.id, "fulfilled");
+  if (updated) {
+    addMessage(
+      purchase.sessionId,
+      "system",
+      "hush",
+      purchase.mediaType === "photo" ? "Live photo delivered." : "Live video delivered.",
+      "system"
+    );
+  }
+  return updated;
+}
+
+export function dismissMediaPurchase(purchase: MediaPurchase): MediaPurchase | undefined {
+  return setMediaPurchaseStatus(purchase.id, "dismissed");
+}
+
+// ---------------------------------------------------------------------------
+// Earnings — local mock totals only, never a real ledger.
+// ---------------------------------------------------------------------------
+
+export interface SessionEarnings {
+  chat: number;
+  photo: number;
+  video: number;
+  total: number;
+}
+
+/** Chat + photo + video purchase total for a single session. All purchases
+ * count toward earnings regardless of fulfillment status — the fan already
+ * "paid" (mock) the moment the purchase was requested. */
+export function getSessionEarnings(session: ChatSession): SessionEarnings {
+  const purchases = getMediaPurchasesForSession(session.id);
+  const chat = Number.parseFloat(session.chatPrice) || 0;
+  const photo = purchases
+    .filter((p) => p.mediaType === "photo")
+    .reduce((sum, p) => sum + (Number.parseFloat(p.price) || 0), 0);
+  const video = purchases
+    .filter((p) => p.mediaType === "video")
+    .reduce((sum, p) => sum + (Number.parseFloat(p.price) || 0), 0);
+  return { chat, photo, video, total: chat + photo + video };
+}
+
+/** Sum of chat-unlock and media-purchase amounts for sessions/purchases
+ * created today, for this creator's dashboard summary card. */
+export function getTodaysEarningsForCreator(creatorUsername: string): number {
+  const today = new Date();
+  const sessions = getAllSessionsForCreator(creatorUsername).filter((s) =>
+    isSameCalendarDay(new Date(s.startedAt), today)
+  );
+  const chatTotal = sessions.reduce((sum, s) => sum + (Number.parseFloat(s.chatPrice) || 0), 0);
+
+  const purchases = getAllMediaPurchases().filter(
+    (p) => p.creatorUsername === creatorUsername && isSameCalendarDay(new Date(p.requestedAt), today)
+  );
+  const mediaTotal = purchases.reduce((sum, p) => sum + (Number.parseFloat(p.price) || 0), 0);
+
+  return chatTotal + mediaTotal;
 }
 
 // ---------------------------------------------------------------------------
