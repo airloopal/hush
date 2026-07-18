@@ -23,12 +23,18 @@ export function ChatComposer({ disabled, disabledReason, onSend }: ChatComposerP
   }
 
   return (
-    <div className="flex flex-col gap-1.5 border-t border-border bg-surface p-3">
+    <div className="sticky bottom-0 z-10 flex flex-col gap-1.5 border-t border-border bg-surface p-3">
       {disabled && disabledReason && (
-        <p className="text-xs text-text-muted">{disabledReason}</p>
+        <p className="text-xs text-text-muted" aria-live="polite">
+          {disabledReason}
+        </p>
       )}
       <div className="flex items-end gap-2">
+        <label htmlFor="chat-composer-input" className="sr-only">
+          Message
+        </label>
         <textarea
+          id="chat-composer-input"
           value={value}
           onChange={(event) => setValue(event.target.value.slice(0, MESSAGE_MAX_LENGTH))}
           onKeyDown={(event) => {

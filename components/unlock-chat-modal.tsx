@@ -53,11 +53,19 @@ export function UnlockChatModal({
       const session = unlockChatSession({ creatorId, creatorUsername, fanUsername, chatPrice });
       setProcessing(false);
       setOpen(false);
-      toast({
-        title: "Chat unlocked",
-        description: `24 hours of unlimited text with @${creatorUsername} is now active.`,
-        variant: "success",
-      });
+      toast(
+        mode === "renew"
+          ? {
+              title: "Chat renewed",
+              description: `Another 24 hours with @${creatorUsername} is now active.`,
+              variant: "success",
+            }
+          : {
+              title: "Chat unlocked",
+              description: `24 hours of unlimited text with @${creatorUsername} is now active.`,
+              variant: "success",
+            }
+      );
       onUnlocked(session);
     }, 400);
   }
@@ -73,8 +81,11 @@ export function UnlockChatModal({
             {mode === "renew" ? "Unlock another 24 hours" : "Confirm chat access"}
           </ModalTitle>
           <ModalDescription>
-            One-time purchase with @{creatorUsername}. Not a subscription — access ends
-            automatically after 24 hours.
+            {mode === "renew"
+              ? `Renewing gives you another full 24 hours of unlimited text with @${creatorUsername}, starting now.`
+              : `One-time purchase with @${creatorUsername} for 24 hours of unlimited text.`}{" "}
+            This is a one-time purchase, not a subscription — access ends automatically after 24
+            hours.
           </ModalDescription>
         </ModalHeader>
 
@@ -103,8 +114,7 @@ export function UnlockChatModal({
         </div>
 
         <p className="text-xs text-text-muted">
-          This is a Stage 2 prototype — no card details are collected and no real payment is
-          made.
+          This is a prototype — no card details are collected and no real payment is made.
         </p>
 
         <ModalFooter>
@@ -112,7 +122,7 @@ export function UnlockChatModal({
             Cancel
           </Button>
           <Button onClick={handleConfirm} isLoading={processing}>
-            Confirm and unlock
+            {mode === "renew" ? "Confirm and renew" : "Confirm and unlock"}
           </Button>
         </ModalFooter>
       </ModalContent>

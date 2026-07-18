@@ -91,27 +91,31 @@ export default function CreatorProfilePage() {
 
           <div className="flex flex-col divide-y divide-border rounded-md border border-border">
             <div className="flex items-center justify-between p-3">
-              <span className="flex items-center gap-2 text-sm">
+              <span className="flex items-center gap-2 text-sm font-medium text-text-primary">
                 <MessageCircle className="h-4 w-4 text-text-muted" />
                 24-hour access · unlimited text
               </span>
               <span className="font-mono-data text-sm font-semibold">${creator.chatPrice}</span>
             </div>
-            <div className="flex items-center justify-between p-3">
+            <div className="flex items-center justify-between p-3 text-text-muted">
               <span className="flex items-center gap-2 text-sm">
-                <Camera className="h-4 w-4 text-text-muted" />
+                <Camera className="h-4 w-4" />
                 Live photo
               </span>
-              <span className="font-mono-data text-sm font-semibold">+${creator.photoPrice}</span>
+              <span className="font-mono-data text-sm">+${creator.photoPrice}</span>
             </div>
-            <div className="flex items-center justify-between p-3">
+            <div className="flex items-center justify-between p-3 text-text-muted">
               <span className="flex items-center gap-2 text-sm">
-                <Video className="h-4 w-4 text-text-muted" />
+                <Video className="h-4 w-4" />
                 Live video
               </span>
-              <span className="font-mono-data text-sm font-semibold">+${creator.videoPrice}</span>
+              <span className="font-mono-data text-sm">+${creator.videoPrice}</span>
             </div>
           </div>
+          <p className="-mt-3 text-xs text-text-muted">
+            24-hour chat access is a one-time purchase, not a subscription. Live photo and video
+            are optional add-ons you can request from within the conversation.
+          </p>
 
           {account.role === "fan" ? (
             <ChatCta creator={creator} fanUsername={account.username} router={router} />
@@ -152,25 +156,37 @@ function ChatCta({
 
   if (active) {
     return (
-      <div className="flex items-center gap-3">
-        <Button onClick={() => router.push(`/chats/${creator.username}`)}>Continue Chat</Button>
-        <Countdown target={active.expiresAt} variant="compact" />
+      <div className="flex items-center justify-between gap-3" aria-live="polite">
+        <Button size="lg" onClick={() => router.push(`/chats/${creator.username}`)}>
+          Continue Chat
+        </Button>
+        <div className="flex flex-col items-end gap-0.5">
+          <span className="text-[11px] text-text-muted">Time remaining</span>
+          <Countdown target={active.expiresAt} variant="compact" />
+        </div>
       </div>
     );
   }
 
   return (
-    <UnlockChatModal
-      creatorId={creator.id}
-      creatorUsername={creator.username}
-      fanUsername={fanUsername}
-      chatPrice={creator.chatPrice}
-      photoPrice={creator.photoPrice}
-      videoPrice={creator.videoPrice}
-      mode={session ? "renew" : "new"}
-      triggerLabel={session ? "Unlock Another 24 Hours" : "Unlock Chat"}
-      onUnlocked={() => router.push(`/chats/${creator.username}`)}
-    />
+    <div className="flex flex-col gap-1.5">
+      {session && (
+        <p className="text-xs text-text-secondary">
+          Your access ended. Renew for another 24 hours whenever you're ready.
+        </p>
+      )}
+      <UnlockChatModal
+        creatorId={creator.id}
+        creatorUsername={creator.username}
+        fanUsername={fanUsername}
+        chatPrice={creator.chatPrice}
+        photoPrice={creator.photoPrice}
+        videoPrice={creator.videoPrice}
+        mode={session ? "renew" : "new"}
+        triggerLabel={session ? "Unlock Another 24 Hours" : "Unlock Chat"}
+        onUnlocked={() => router.push(`/chats/${creator.username}`)}
+      />
+    </div>
   );
 }
 

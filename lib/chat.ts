@@ -8,6 +8,7 @@ import {
   saveAllSessions,
   saveBlockedCreators,
 } from "@/lib/chat-storage";
+import { getLastReadAt, setLastReadNow } from "@/lib/conversation-reads";
 import type {
   ChatMessage,
   ChatMessageType,
@@ -284,15 +285,27 @@ export function fulfillMediaPurchase(purchase: MediaPurchase): MediaPurchase | u
       purchase.sessionId,
       "system",
       "hush",
-      purchase.mediaType === "photo" ? "Live photo delivered." : "Live video delivered.",
-      "system"
+      purchase.mediaType === "photo"
+        ? "Live photo marked as delivered. Prototype only — no real file was sent."
+        : "Live video marked as delivered. Prototype only — no real file was sent.",
+      "media-request"
     );
   }
   return updated;
 }
 
 export function dismissMediaPurchase(purchase: MediaPurchase): MediaPurchase | undefined {
-  return setMediaPurchaseStatus(purchase.id, "dismissed");
+  const updated = setMediaPurchaseStatus(purchase.id, "dismissed");
+  if (updated) {
+    addMessage(
+      purchase.sessionId,
+      "system",
+      "hush",
+      purchase.mediaType === "photo" ? "Live photo request dismissed." : "Live video request dismissed.",
+      "media-request"
+    );
+  }
+  return updated;
 }
 
 // ---------------------------------------------------------------------------
@@ -350,4 +363,57 @@ export function blockCreator(creatorUsername: string): void {
   const current = getBlockedCreators();
   if (current.includes(creatorUsername)) return;
   saveBlockedCreators([...current, creatorUsername]);
+}
+
+// ---------------------------------------------------------------------------
+// Unread state (fan side) — derived from the last creator message vs. the
+// stored last-read timestamp. No unread boolean is ever persisted.
+// ---------------------------------------------------------------------------
+
+/**
+ * A conversation is unread for the fan when the most recent message sent by
+ * the *creator* is newer than the fan's last-read timestamp for this pair.
+ * Fan-sent messages and system messages (unlock/renew/media-status notes)
+ * never mark a conversation unread.
+ */
+export function isConversationUnreadForFan(fanUsername: string, creatorUsername: string): boolean {
+  const messages = getMessagesForPair(fanUsername, creatorUsername);
+  const lastCreatorMessage = [...messages].reverse().find((m) => m.senderRole === "creator");
+  if (!lastCreatorMessage) return false;
+
+  const lastReadAt = getLastReadAt(fanUsername, creatorUsername);
+  if (!lastReadAt) return true;
+
+  return new Date(lastCreatorMessage.sentAt).getTime() > new Date(lastReadAt).getTime();
+}
+
+/** Call when the fan opens a conversation — marks it read as of now. */
+export function markConversationReadByFan(fanUsername: string, creatorUsername: string): void {
+  setLastReadNow(fanUsername, creatorUsername);
+}
+
+function lastActivityTime(session: ChatSession): number {
+  const last = getLastMessage(session.id);
+  return new Date(last?.sentAt ?? session.startedAt).getTime();
+}
+
+/**
+ * Fan chat list order: unread active conversations first, then active
+ * conversations by most recent activity, then expired conversations by
+ * most recent activity. Does not touch creator dashboard sorting.
+ */
+export function sortFanChatSessions(sessions: ChatSession[]): ChatSession[] {
+  return [...sessions].sort((a, b) => {
+    const aActive = isSessionActive(a);
+    const bActive = isSessionActive(b);
+    if (aActive !== bActive) return aActive ? -1 : 1;
+
+    if (aActive) {
+      const aUnread = isConversationUnreadForFan(a.fanUsername, a.creatorUsername);
+      const bUnread = isConversationUnreadForFan(b.fanUsername, b.creatorUsername);
+      if (aUnread !== bUnread) return aUnread ? -1 : 1;
+    }
+
+    return lastActivityTime(b) - lastActivityTime(a);
+  });
 }

@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { MessagesSquare, ShieldAlert } from "lucide-react";
+import { AlertCircle, MessagesSquare, ShieldAlert, UserX } from "lucide-react";
 
 import { NavigationBar } from "@/components/navigation-bar";
 import { BottomNav } from "@/components/bottom-nav";
@@ -12,6 +12,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Countdown } from "@/components/countdown";
 import { ChatMessageBubble } from "@/components/chat-message-bubble";
+import { ChatDateSeparator } from "@/components/chat-date-separator";
+import { NewMessagesButton } from "@/components/new-messages-button";
 import { ChatComposer } from "@/components/chat-composer";
 import { UnlockChatModal } from "@/components/unlock-chat-modal";
 import { BuyMediaModal } from "@/components/buy-media-modal";
@@ -30,6 +32,7 @@ import {
   getPendingMediaPurchasesForSession,
   isCreatorBlocked,
   isSessionActive,
+  markConversationReadByFan,
 } from "@/lib/chat";
 import { formatPresence } from "@/lib/utils";
 import type { ChatMessage, ChatSession, MediaPurchase } from "@/lib/chat-types";
@@ -95,6 +98,8 @@ export default function ActiveChatPage() {
   );
 }
 
+const SCROLL_BOTTOM_THRESHOLD_PX = 80;
+
 function ChatConversation({
   fanUsername,
   creatorUsername,
@@ -119,11 +124,56 @@ function ChatConversation({
   const [pendingPurchases, setPendingPurchases] = React.useState<MediaPurchase[]>(() =>
     session ? getPendingMediaPurchasesForSession(session.id) : []
   );
-  const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const previousMessageCount = React.useRef(messages.length);
+  const [isAtBottom, setIsAtBottom] = React.useState(true);
+  const [hasNewMessages, setHasNewMessages] = React.useState(false);
+
+  // Mark this conversation read as soon as the fan opens it, and again
+  // whenever the visible thread changes while they're still here — never
+  // on fan-sent or system messages, since those don't drive unread state.
+  React.useEffect(() => {
+    if (isFanViewer && session) {
+      markConversationReadByFan(fanUsername, creatorUsername);
+    }
+  }, [isFanViewer, session, fanUsername, creatorUsername, messages]);
+
+  // Scroll to the newest message once, on initial load.
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ block: "end" });
-  }, [messages.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // On later updates, auto-scroll only if the viewer is already at the
+  // bottom; otherwise surface a "new messages" indicator instead of
+  // yanking their scroll position while they're reading older history.
+  React.useEffect(() => {
+    const grew = messages.length > previousMessageCount.current;
+    previousMessageCount.current = messages.length;
+    if (!grew) return;
+    if (isAtBottom) {
+      messagesEndRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+    } else {
+      setHasNewMessages(true);
+    }
+  }, [messages.length, isAtBottom]);
+
+  function handleScroll() {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const atBottom = distanceFromBottom < SCROLL_BOTTOM_THRESHOLD_PX;
+    setIsAtBottom(atBottom);
+    if (atBottom) setHasNewMessages(false);
+  }
+
+  function jumpToLatest() {
+    messagesEndRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+    setHasNewMessages(false);
+    setIsAtBottom(true);
+  }
 
   function refreshThread() {
     setMessages(getMessagesForPair(fanUsername, creatorUsername));
@@ -165,7 +215,7 @@ function ChatConversation({
   const composerDisabledReason = blocked
     ? "You've blocked this creator. Unblock from your device to resume messaging."
     : isExpired
-    ? "Chat access has ended. Unlock another 24 hours to keep chatting."
+    ? "Chat access has ended. Renew below to keep chatting."
     : undefined;
 
   return (
@@ -177,14 +227,14 @@ function ChatConversation({
             <span className="truncate font-semibold leading-tight">@{headerUsername}</span>
             {presenceLabel && <span className="text-xs text-text-secondary">{presenceLabel}</span>}
           </div>
-          {session && !isExpired ? (
-            <Countdown target={session.expiresAt} variant="compact" onComplete={() => setIsExpired(true)} />
-          ) : session ? (
-            <span className="font-mono-data text-xs text-danger">Expired</span>
-          ) : null}
-          {session && (
-            <StatusBadge status={getConversationStatus(session, isFanViewer ? blocked : false)} />
-          )}
+          <div className="flex items-center gap-2" aria-live="polite">
+            {session && !isExpired ? (
+              <Countdown target={session.expiresAt} variant="compact" onComplete={() => setIsExpired(true)} />
+            ) : session ? (
+              <span className="font-mono-data text-xs text-danger">Expired</span>
+            ) : null}
+            {session && <StatusBadge status={getConversationStatus(session, isFanViewer ? blocked : false)} />}
+          </div>
           {session && (
             <SafetyMenu
               session={session}
@@ -194,32 +244,41 @@ function ChatConversation({
           )}
         </header>
 
-        <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
-          {!session ? (
-            <EmptyState
-              icon={MessagesSquare}
-              title={isFanViewer ? "No chat with this creator yet" : "No conversation with this fan yet"}
-              description={
-                isFanViewer
-                  ? "Unlock 24-hour chat access from their profile to start a conversation."
-                  : "This fan hasn't unlocked chat access with you yet."
-              }
-              action={
-                isFanViewer ? (
-                  <Button variant="outline" asChild>
-                    <Link href={`/creators/${creatorUsername}`}>View profile</Link>
-                  </Button>
-                ) : undefined
-              }
-            />
-          ) : messages.length === 0 ? (
-            <EmptyState icon={MessagesSquare} title="Say hello" description="Start the conversation below." />
-          ) : (
-            messages.map((message) => (
-              <ChatMessageBubble key={message.id} message={message} viewerRole={isFanViewer ? "fan" : "creator"} />
-            ))
-          )}
-          <div ref={messagesEndRef} />
+        <div className="relative flex-1 overflow-hidden">
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            className="flex h-full flex-col gap-1 overflow-y-auto p-4"
+          >
+            {!session ? (
+              <EmptyState
+                icon={MessagesSquare}
+                title={isFanViewer ? "No chat with this creator yet" : "No conversation with this fan yet"}
+                description={
+                  isFanViewer
+                    ? "Unlock 24-hour chat access from their profile to start a conversation."
+                    : "This fan hasn't unlocked chat access with you yet."
+                }
+                action={
+                  isFanViewer ? (
+                    <Button variant="outline" asChild>
+                      <Link href={`/creators/${creatorUsername}`}>View profile</Link>
+                    </Button>
+                  ) : undefined
+                }
+              />
+            ) : messages.length === 0 ? (
+              <EmptyState
+                icon={MessagesSquare}
+                title="Say hello"
+                description={`Your conversation with @${headerUsername} starts here. Say hello to break the ice.`}
+              />
+            ) : (
+              <MessageList messages={messages} viewerRole={isFanViewer ? "fan" : "creator"} />
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+          {hasNewMessages && <NewMessagesButton onClick={jumpToLatest} />}
         </div>
 
         {!isFanViewer && pendingPurchases.length > 0 && (
@@ -227,6 +286,14 @@ function ChatConversation({
             {pendingPurchases.map((purchase) => (
               <MediaRequestCard key={purchase.id} purchase={purchase} onResolved={handleMediaResolved} />
             ))}
+          </div>
+        )}
+
+        {isFanViewer && blocked && (
+          <div className="flex items-center gap-2 border-t border-border bg-danger-bg p-3 text-sm text-danger">
+            <UserX className="h-4 w-4 shrink-0" aria-hidden="true" />
+            You've blocked this creator. They can no longer send you messages, and messaging is
+            disabled.
           </div>
         )}
 
@@ -250,19 +317,33 @@ function ChatConversation({
         )}
 
         {isFanViewer && session && isExpired && mockCreator && (
-          <div className="flex items-center justify-between gap-3 border-t border-border bg-amber/5 p-3">
-            <p className="text-sm text-text-secondary">Chat access has ended.</p>
-            <UnlockChatModal
-              creatorId={mockCreator.id}
-              creatorUsername={mockCreator.username}
-              fanUsername={fanUsername}
-              chatPrice={mockCreator.chatPrice}
-              photoPrice={mockCreator.photoPrice}
-              videoPrice={mockCreator.videoPrice}
-              mode="renew"
-              triggerLabel="Unlock Another 24 Hours"
-              onUnlocked={handleUnlocked}
-            />
+          <div className="flex flex-col gap-2 border-t border-border bg-amber/5 p-3" aria-live="polite">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber" aria-hidden="true" />
+              <div className="flex flex-col gap-0.5">
+                <p className="text-sm font-medium text-text-primary">Chat access has ended</p>
+                <p className="text-xs text-text-secondary">
+                  Your conversation history is saved. Renew for another 24 hours of unlimited text
+                  with @{mockCreator.username} — a one-time purchase, not a subscription.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-mono-data text-sm font-semibold text-text-primary">
+                ${mockCreator.chatPrice}
+              </span>
+              <UnlockChatModal
+                creatorId={mockCreator.id}
+                creatorUsername={mockCreator.username}
+                fanUsername={fanUsername}
+                chatPrice={mockCreator.chatPrice}
+                photoPrice={mockCreator.photoPrice}
+                videoPrice={mockCreator.videoPrice}
+                mode="renew"
+                triggerLabel="Unlock Another 24 Hours"
+                onUnlocked={handleUnlocked}
+              />
+            </div>
           </div>
         )}
 
@@ -271,6 +352,37 @@ function ChatConversation({
         )}
       </div>
     </ChatShell>
+  );
+}
+
+function isSameCalendarDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+/** Renders the thread with date separators inserted between calendar days. */
+function MessageList({
+  messages,
+  viewerRole,
+}: {
+  messages: ChatMessage[];
+  viewerRole: "fan" | "creator";
+}) {
+  let previousDate: Date | null = null;
+
+  return (
+    <>
+      {messages.map((message) => {
+        const messageDate = new Date(message.sentAt);
+        const showSeparator = !previousDate || !isSameCalendarDay(previousDate, messageDate);
+        previousDate = messageDate;
+        return (
+          <React.Fragment key={message.id}>
+            {showSeparator && <ChatDateSeparator date={message.sentAt} />}
+            <ChatMessageBubble message={message} viewerRole={viewerRole} />
+          </React.Fragment>
+        );
+      })}
+    </>
   );
 }
 

@@ -8,18 +8,10 @@ import { BottomNav } from "@/components/bottom-nav";
 import { EmptyState } from "@/components/empty-state";
 import { ChatListItem } from "@/components/chat-list-item";
 import { useRequireAccount } from "@/lib/use-account-guard";
-import { getAllSessionsForFan, getLastMessage, getRemainingMs, isSessionActive } from "@/lib/chat";
+import { getAllSessionsForFan, getLastMessage, isConversationUnreadForFan, sortFanChatSessions } from "@/lib/chat";
 import { MOCK_CREATORS } from "@/lib/creators";
 import { findCreatorByUsername } from "@/lib/discovery";
 import type { ChatSession } from "@/lib/chat-types";
-
-function sortChats(sessions: ChatSession[]): ChatSession[] {
-  const active = sessions.filter(isSessionActive).sort((a, b) => getRemainingMs(a) - getRemainingMs(b));
-  const expired = sessions
-    .filter((s) => !isSessionActive(s))
-    .sort((a, b) => new Date(b.expiresAt).getTime() - new Date(a.expiresAt).getTime());
-  return [...active, ...expired];
-}
 
 export default function ChatsPage() {
   const { ready, account } = useRequireAccount();
@@ -27,7 +19,7 @@ export default function ChatsPage() {
 
   React.useEffect(() => {
     if (!ready || !account || account.role !== "fan") return;
-    setSessions(sortChats(getAllSessionsForFan(account.username)));
+    setSessions(sortFanChatSessions(getAllSessionsForFan(account.username)));
   }, [ready, account]);
 
   if (!ready || !account) return null;
@@ -64,7 +56,7 @@ export default function ChatsPage() {
                   session={session}
                   creatorAvatarUrl={creator?.avatarUrl}
                   lastMessage={lastMessage}
-                  unread={lastMessage?.senderRole === "creator"}
+                  unread={isConversationUnreadForFan(session.fanUsername, session.creatorUsername)}
                 />
               );
             })}

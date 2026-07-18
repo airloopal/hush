@@ -9,6 +9,8 @@ import { CreatorSection } from "@/components/creator-section";
 import { useRequireAccount } from "@/lib/use-account-guard";
 import { hasAdultAccess } from "@/lib/account";
 import { MOCK_CREATORS } from "@/lib/creators";
+import { readDiscoverFilters, writeDiscoverFilters } from "@/lib/discover-session";
+import type { Category } from "@/lib/categories";
 import {
   filterByAdultAccess,
   filterByCategory,
@@ -25,6 +27,7 @@ export default function DiscoverPage() {
   const { ready, account } = useRequireAccount();
   const [search, setSearch] = React.useState("");
   const [category, setCategory] = React.useState<CategoryFilter>("All");
+  const [restored, setRestored] = React.useState(false);
 
   const adultAllowed = hasAdultAccess(account);
 
@@ -34,6 +37,27 @@ export default function DiscoverPage() {
   );
 
   const categories = React.useMemo(() => visibleCategories(adultAllowed), [adultAllowed]);
+
+  // Restore search/category from this browser tab's session (not the URL)
+  // once, on arrival — e.g. returning from a creator profile via back.
+  React.useEffect(() => {
+    if (!ready || !account) return;
+    const stored = readDiscoverFilters();
+    if (stored) {
+      setSearch(stored.search);
+      const isKnownCategory =
+        stored.category === "All" || categories.includes(stored.category as Category);
+      setCategory(isKnownCategory ? (stored.category as CategoryFilter) : "All");
+    }
+    setRestored(true);
+    // Only run once filters can first be restored — not on every re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, account]);
+
+  React.useEffect(() => {
+    if (!restored) return;
+    writeDiscoverFilters({ search, category });
+  }, [restored, search, category]);
 
   const filtered = React.useMemo(() => {
     const byCategory = filterByCategory(visibleCreators, category);
