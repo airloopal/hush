@@ -8,9 +8,12 @@ import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Hush — Design System",
+  title: {
+    default: "Hush — Pay for the conversation, not another subscription",
+    template: "%s · Hush",
+  },
   description:
-    "Reusable UI layer for Hush, a paid-conversation platform for creators. Design-system preview built with mock data only.",
+    "Hush is a paid-conversation platform for creators. Unlock 24 hours of unlimited private text, and purchase live photos or videos separately, only when you want them.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

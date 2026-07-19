@@ -20,11 +20,14 @@
     --emerald-foreground: #ffffff;
 
     /* Reserved accents: amber = warnings / urgent countdowns / chats
-       expiring soon only. violet = sponsored boosts / promo labels only. */
+       expiring soon only. violet = sponsored boosts / promo labels only.
+       coral = live media (live photo/video) interactions only. */
     --amber: #c8862a;
     --amber-foreground: #ffffff;
     --violet: #6c5dc7;
     --violet-foreground: #ffffff;
+    --coral: #e8604c;
+    --coral-foreground: #ffffff;
 
     --success: #3f7d3a;
     --success-bg: #e5f1e2;
@@ -69,6 +72,8 @@
     --amber-foreground: #14141c;
     --violet: #8b7fd6;
     --violet-foreground: #14141c;
+    --coral: #ff8a72;
+    --coral-foreground: #14141c;
 
     --success: #7fc274;
     --success-bg: #17281a;
