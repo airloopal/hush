@@ -1,5 +1,6 @@
 import { readStorage, writeStorage } from "@/lib/storage";
 import type { ChatMessage, ChatSession, MediaPurchase } from "@/lib/chat-types";
+import type { BlockedCreator } from "@/lib/trust-types";
 
 export const CHAT_STORAGE_KEYS = {
   sessions: "hush:chat-sessions",
@@ -110,15 +111,22 @@ export function saveAllMediaPurchases(purchases: MediaPurchase[]): void {
 }
 
 // ---------------------------------------------------------------------------
-// Blocked creators — flat list of usernames the current local fan blocked.
+// Blocked creators — which creators the current local fan has blocked, and
+// when. Extends the original flat username list with a blockedAt timestamp
+// (old plain-string entries fail validation and are dropped, same as any
+// other malformed entry).
 // ---------------------------------------------------------------------------
 
-export function getBlockedCreators(): string[] {
-  const raw = readStorage<unknown>(CHAT_STORAGE_KEYS.blockedCreators);
-  if (!Array.isArray(raw)) return [];
-  return raw.filter(isNonEmptyString);
+function isValidBlockedCreator(value: unknown): value is BlockedCreator {
+  if (!value || typeof value !== "object") return false;
+  const b = value as Record<string, unknown>;
+  return isNonEmptyString(b.creatorUsername) && isValidIsoDate(b.blockedAt);
 }
 
-export function saveBlockedCreators(usernames: string[]): void {
-  writeStorage(CHAT_STORAGE_KEYS.blockedCreators, usernames);
+export function getBlockedCreators(): BlockedCreator[] {
+  return readValidatedList(CHAT_STORAGE_KEYS.blockedCreators, isValidBlockedCreator);
+}
+
+export function saveBlockedCreators(blocked: BlockedCreator[]): void {
+  writeStorage(CHAT_STORAGE_KEYS.blockedCreators, blocked);
 }

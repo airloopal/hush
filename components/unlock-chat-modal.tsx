@@ -27,6 +27,8 @@ export interface UnlockChatModalProps {
   /** "new" shows "Unlock Chat" copy, "renew" shows renewal copy. */
   mode: "new" | "renew";
   triggerLabel: string;
+  /** Disable the trigger entirely — e.g. the fan has blocked this creator. */
+  disabled?: boolean;
   onUnlocked: (session: ChatSession) => void;
 }
 
@@ -40,6 +42,7 @@ export function UnlockChatModal({
   videoPrice,
   mode,
   triggerLabel,
+  disabled,
   onUnlocked,
 }: UnlockChatModalProps) {
   const { toast } = useToast();
@@ -53,6 +56,16 @@ export function UnlockChatModal({
       const session = unlockChatSession({ creatorId, creatorUsername, fanUsername, chatPrice });
       setProcessing(false);
       setOpen(false);
+
+      if (!session) {
+        toast({
+          title: "Chat unavailable",
+          description: `You've blocked @${creatorUsername}. Unblock them from Settings to unlock chat access again.`,
+          variant: "danger",
+        });
+        return;
+      }
+
       toast(
         mode === "renew"
           ? {
@@ -73,7 +86,7 @@ export function UnlockChatModal({
   return (
     <Modal open={open} onOpenChange={setOpen}>
       <ModalTrigger asChild>
-        <Button>{triggerLabel}</Button>
+        <Button disabled={disabled}>{triggerLabel}</Button>
       </ModalTrigger>
       <ModalContent>
         <ModalHeader>

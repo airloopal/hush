@@ -5,6 +5,8 @@ import { Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { CategoryPill } from "@/components/ui/category-pill";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { isCreatorBlocked } from "@/lib/chat";
 import type { MockCreator } from "@/lib/types";
 import { cn, formatPresence } from "@/lib/utils";
 
@@ -19,6 +21,7 @@ const isSponsored = (creator: MockCreator) =>
 /** Compact marketplace card for Discover — links to the full profile. */
 export function CreatorTile({ creator, className }: CreatorTileProps) {
   const sponsored = isSponsored(creator);
+  const blocked = isCreatorBlocked(creator.username);
 
   return (
     <Link href={`/creators/${creator.username}`} className="block">
@@ -28,7 +31,7 @@ export function CreatorTile({ creator, className }: CreatorTileProps) {
           className
         )}
       >
-        {sponsored && (
+        {sponsored && !blocked && (
           <div className="flex items-center gap-1.5 bg-violet/10 px-4 py-1.5 text-xs font-medium text-violet">
             <Sparkles className="h-3 w-3" />
             Sponsored
@@ -42,10 +45,14 @@ export function CreatorTile({ creator, className }: CreatorTileProps) {
               {formatPresence(creator.isOnline, creator.lastSeenMinutes)}
             </span>
           </div>
-          {creator.isNew && (
-            <span className="rounded-pill bg-emerald/10 px-2 py-0.5 text-[11px] font-medium text-emerald">
-              New
-            </span>
+          {blocked ? (
+            <StatusBadge status="blocked" />
+          ) : (
+            creator.isNew && (
+              <span className="rounded-pill bg-emerald/10 px-2 py-0.5 text-[11px] font-medium text-emerald">
+                New
+              </span>
+            )
           )}
         </CardHeader>
         <CardContent className="flex flex-1 flex-col gap-3 pt-0">

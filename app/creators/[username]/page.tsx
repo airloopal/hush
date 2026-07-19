@@ -12,13 +12,14 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CategoryPill } from "@/components/ui/category-pill";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { UnlockChatModal } from "@/components/unlock-chat-modal";
 import { Countdown } from "@/components/countdown";
 import { useRequireAccount } from "@/lib/use-account-guard";
 import { hasAdultAccess } from "@/lib/account";
 import { findCreatorByUsername } from "@/lib/discovery";
 import { MOCK_CREATORS } from "@/lib/creators";
-import { findActiveSession, findLatestSession } from "@/lib/chat";
+import { findActiveSession, findLatestSession, isCreatorBlocked } from "@/lib/chat";
 import { formatPresence } from "@/lib/utils";
 import type { Account } from "@/lib/types";
 import type { ChatSession } from "@/lib/chat-types";
@@ -81,6 +82,9 @@ export default function CreatorProfilePage() {
             <CategoryPill variant={creator.isAdult ? "amber" : "neutral"} className="w-fit">
               {creator.category}
             </CategoryPill>
+            {account.role === "fan" && isCreatorBlocked(creator.username) && (
+              <StatusBadge status="blocked" className="w-fit" />
+            )}
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
@@ -153,6 +157,7 @@ function ChatCta({
   if (!checked) return null;
 
   const active = session && findActiveSession(fanUsername, creator.username);
+  const blocked = isCreatorBlocked(creator.username);
 
   if (active) {
     return (
@@ -170,10 +175,17 @@ function ChatCta({
 
   return (
     <div className="flex flex-col gap-1.5">
-      {session && (
-        <p className="text-xs text-text-secondary">
-          Your access ended. Renew for another 24 hours whenever you're ready.
+      {blocked ? (
+        <p className="text-xs text-danger">
+          You've blocked this creator, so chat access is unavailable. Unblock them from Settings
+          to unlock chat again.
         </p>
+      ) : (
+        session && (
+          <p className="text-xs text-text-secondary">
+            Your access ended. Renew for another 24 hours whenever you're ready.
+          </p>
+        )
       )}
       <UnlockChatModal
         creatorId={creator.id}
@@ -184,6 +196,7 @@ function ChatCta({
         videoPrice={creator.videoPrice}
         mode={session ? "renew" : "new"}
         triggerLabel={session ? "Unlock Another 24 Hours" : "Unlock Chat"}
+        disabled={blocked}
         onUnlocked={() => router.push(`/chats/${creator.username}`)}
       />
     </div>

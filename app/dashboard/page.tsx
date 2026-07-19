@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Camera, DollarSign, MessagesSquare, Timer } from "lucide-react";
+import { Camera, DollarSign, FileWarning, MessagesSquare, Receipt, Timer, UserX } from "lucide-react";
 
 import { NavigationBar } from "@/components/navigation-bar";
 import { BottomNav } from "@/components/bottom-nav";
@@ -22,6 +22,7 @@ import {
   isExpiringToday,
   isSessionActive,
 } from "@/lib/chat";
+import { getCreatorTrustMetrics, getPaymentIssuesForCreator, getReportsForCreator } from "@/lib/trust";
 import type { ChatSession, MediaPurchase } from "@/lib/chat-types";
 
 // Fan-side dashboard has no real chat data yet — same static placeholders
@@ -70,6 +71,18 @@ export default function DashboardPage() {
     { label: "Expiring today", value: String(expiringTodayCount), icon: Timer, accent: "amber" as const },
   ];
 
+  const openReportsCount = isCreator ? getReportsForCreator(account.username).length : 0;
+  const pendingIssuesCount = isCreator ? getPaymentIssuesForCreator(account.username).length : 0;
+  // Prototype has no multi-user backend, so this reflects only the current
+  // local fan's block state — see CreatorTrustMetrics for the same caveat.
+  const blockedUsersCount = isCreator ? getCreatorTrustMetrics(account.username).blocksReceived : 0;
+
+  const trustMetrics = [
+    { label: "Open Reports", value: String(openReportsCount), icon: FileWarning, accent: "neutral" as const },
+    { label: "Pending Payment Issues", value: String(pendingIssuesCount), icon: Receipt, accent: "neutral" as const },
+    { label: "Blocked Users", value: String(blockedUsersCount), icon: UserX, accent: "neutral" as const },
+  ];
+
   function handleRequestResolved() {
     setVersion((v) => v + 1);
   }
@@ -116,6 +129,18 @@ export default function DashboardPage() {
             />
           )}
         </section>
+
+        {isCreator && (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-semibold">Trust &amp; Safety</h2>
+            <p className="text-xs text-text-muted">Informational only — reports and blocks aren't public.</p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {trustMetrics.map((metric) => (
+                <DashboardCard key={metric.label} {...metric} />
+              ))}
+            </div>
+          </section>
+        )}
 
         {isCreator && (
           <section className="flex flex-col gap-3">

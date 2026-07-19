@@ -9,6 +9,7 @@ import {
   saveBlockedCreators,
 } from "@/lib/chat-storage";
 import { getLastReadAt, setLastReadNow } from "@/lib/conversation-reads";
+import { generateId } from "@/lib/id";
 import type {
   ChatMessage,
   ChatMessageType,
@@ -21,13 +22,6 @@ import type {
 
 const SESSION_LENGTH_MS = 24 * 60 * 60 * 1000;
 export const MESSAGE_MAX_LENGTH = 1000;
-
-function generateId(prefix: string): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}_${crypto.randomUUID()}`;
-  }
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
 
 /** Mock payment reference only — not a real transaction id. */
 function generateTransactionRef(): string {
@@ -156,8 +150,13 @@ export interface UnlockChatParams {
  * creates a fresh 24-hour session — including when the previous session for
  * this pair has expired, in which case the old session and its message
  * history are retained untouched alongside the new one.
+ *
+ * Refuses to create or return anything if the fan has blocked this creator
+ * — blocking must fully prevent new chat access, not just hide the button.
  */
-export function unlockChatSession(params: UnlockChatParams): ChatSession {
+export function unlockChatSession(params: UnlockChatParams): ChatSession | undefined {
+  if (isCreatorBlocked(params.creatorUsername)) return undefined;
+
   const existingActive = findActiveSession(params.fanUsername, params.creatorUsername);
   if (existingActive) return existingActive;
 
@@ -356,13 +355,22 @@ export function getTodaysEarningsForCreator(creatorUsername: string): number {
 // ---------------------------------------------------------------------------
 
 export function isCreatorBlocked(creatorUsername: string): boolean {
-  return getBlockedCreators().includes(creatorUsername);
+  return getBlockedCreators().some((b) => b.creatorUsername === creatorUsername);
 }
 
 export function blockCreator(creatorUsername: string): void {
   const current = getBlockedCreators();
-  if (current.includes(creatorUsername)) return;
-  saveBlockedCreators([...current, creatorUsername]);
+  if (current.some((b) => b.creatorUsername === creatorUsername)) return;
+  saveBlockedCreators([...current, { creatorUsername, blockedAt: new Date().toISOString() }]);
+}
+
+export function unblockCreator(creatorUsername: string): void {
+  const current = getBlockedCreators();
+  saveBlockedCreators(current.filter((b) => b.creatorUsername !== creatorUsername));
+}
+
+export function getBlockedCreatorsList() {
+  return getBlockedCreators();
 }
 
 // ---------------------------------------------------------------------------

@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, ShieldCheck } from "lucide-react";
 
 import { NavigationBar } from "@/components/navigation-bar";
 import { BottomNav } from "@/components/bottom-nav";
@@ -64,6 +65,20 @@ export default function SettingsPage() {
             )}
           </CardContent>
         </Card>
+
+        {account.role === "fan" && (
+          <Card className="overflow-hidden transition-colors duration-fast ease-signal hover:bg-surface-muted">
+            <Link href="/settings/safety" className="flex items-center gap-3 p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald focus-visible:ring-inset">
+              <span className="flex h-9 w-9 items-center justify-center rounded-md bg-emerald/10 text-emerald">
+                <ShieldCheck className="h-5 w-5" />
+              </span>
+              <div className="flex flex-col">
+                <CardTitle className="text-base">Safety Centre</CardTitle>
+                <CardDescription>Blocked creators, reports, and payment issues</CardDescription>
+              </div>
+            </Link>
+          </Card>
+        )}
 
         {isDev && (
           <Card className="border-danger/30">
