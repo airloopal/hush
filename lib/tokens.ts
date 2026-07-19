@@ -27,10 +27,13 @@ export const colorTokens = {
     // Reserved accents — NOT general brand colors. Amber is used only for
     // warnings, urgent countdowns, and "chat expiring soon" states. Violet
     // is used only for sponsored boosts / optional creator-promotion labels.
+    // Coral is used only for live media (live photo/video) interactions.
     amber: "#C8862A",
     amberForeground: "#FFFFFF",
     violet: "#6C5DC7",
     violetForeground: "#FFFFFF",
+    coral: "#E8604C",
+    coralForeground: "#FFFFFF",
 
     // Status — kept semantically distinct from brand and from each other.
     success: "#3F7D3A",
@@ -61,6 +64,8 @@ export const colorTokens = {
     amberForeground: "#14141C",
     violet: "#8B7FD6",
     violetForeground: "#14141C",
+    coral: "#FF8A72",
+    coralForeground: "#14141C",
 
     success: "#7FC274",
     successBg: "#17281A",
