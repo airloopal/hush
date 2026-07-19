@@ -33,7 +33,9 @@ import {
   isCreatorBlocked,
   isSessionActive,
   markConversationReadByFan,
+  syncFanExpiryNotifications,
 } from "@/lib/chat";
+import { getChatPreferences, getPrivacySettings } from "@/lib/preferences";
 import { formatPresence } from "@/lib/utils";
 import type { ChatMessage, ChatSession, MediaPurchase } from "@/lib/chat-types";
 
@@ -124,6 +126,8 @@ function ChatConversation({
   const [pendingPurchases, setPendingPurchases] = React.useState<MediaPurchase[]>(() =>
     session ? getPendingMediaPurchasesForSession(session.id) : []
   );
+  const [chatPreferences] = React.useState(() => getChatPreferences());
+  const [allowRenewals] = React.useState(() => getPrivacySettings().allowChatRenewals);
 
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
@@ -140,6 +144,12 @@ function ChatConversation({
     }
   }, [isFanViewer, session, fanUsername, creatorUsername, messages]);
 
+  // Lazily detect expiring/expired chats for the fan's notification centre —
+  // there's no server to push this the instant it happens.
+  React.useEffect(() => {
+    if (isFanViewer) syncFanExpiryNotifications(fanUsername);
+  }, [isFanViewer, fanUsername]);
+
   // Scroll to the newest message once, on initial load.
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ block: "end" });
@@ -147,18 +157,18 @@ function ChatConversation({
   }, []);
 
   // On later updates, auto-scroll only if the viewer is already at the
-  // bottom; otherwise surface a "new messages" indicator instead of
-  // yanking their scroll position while they're reading older history.
+  // bottom and the autoScroll preference is on; otherwise surface a "new
+  // messages" indicator instead of yanking their scroll position.
   React.useEffect(() => {
     const grew = messages.length > previousMessageCount.current;
     previousMessageCount.current = messages.length;
     if (!grew) return;
-    if (isAtBottom) {
+    if (chatPreferences.autoScroll && isAtBottom) {
       messagesEndRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
     } else {
       setHasNewMessages(true);
     }
-  }, [messages.length, isAtBottom]);
+  }, [messages.length, isAtBottom, chatPreferences.autoScroll]);
 
   function handleScroll() {
     const el = scrollContainerRef.current;
@@ -274,7 +284,12 @@ function ChatConversation({
                 description={`Your conversation with @${headerUsername} starts here. Say hello to break the ice.`}
               />
             ) : (
-              <MessageList messages={messages} viewerRole={isFanViewer ? "fan" : "creator"} />
+              <MessageList
+                messages={messages}
+                viewerRole={isFanViewer ? "fan" : "creator"}
+                showTimestamps={chatPreferences.showTimestamps}
+                compact={chatPreferences.compactSpacing}
+              />
             )}
             <div ref={messagesEndRef} />
           </div>
@@ -323,27 +338,35 @@ function ChatConversation({
               <div className="flex flex-col gap-0.5">
                 <p className="text-sm font-medium text-text-primary">Chat access has ended</p>
                 <p className="text-xs text-text-secondary">
-                  Your conversation history is saved. Renew for another 24 hours of unlimited text
-                  with @{mockCreator.username} — a one-time purchase, not a subscription.
+                  Your conversation history is saved.{" "}
+                  {allowRenewals
+                    ? `Renew for another 24 hours of unlimited text with @${mockCreator.username} — a one-time purchase, not a subscription.`
+                    : "Chat renewals are turned off in your privacy settings."}
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="font-mono-data text-sm font-semibold text-text-primary">
-                ${mockCreator.chatPrice}
-              </span>
-              <UnlockChatModal
-                creatorId={mockCreator.id}
-                creatorUsername={mockCreator.username}
-                fanUsername={fanUsername}
-                chatPrice={mockCreator.chatPrice}
-                photoPrice={mockCreator.photoPrice}
-                videoPrice={mockCreator.videoPrice}
-                mode="renew"
-                triggerLabel="Unlock Another 24 Hours"
-                onUnlocked={handleUnlocked}
-              />
-            </div>
+            {allowRenewals ? (
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-mono-data text-sm font-semibold text-text-primary">
+                  ${mockCreator.chatPrice}
+                </span>
+                <UnlockChatModal
+                  creatorId={mockCreator.id}
+                  creatorUsername={mockCreator.username}
+                  fanUsername={fanUsername}
+                  chatPrice={mockCreator.chatPrice}
+                  photoPrice={mockCreator.photoPrice}
+                  videoPrice={mockCreator.videoPrice}
+                  mode="renew"
+                  triggerLabel="Unlock Another 24 Hours"
+                  onUnlocked={handleUnlocked}
+                />
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" asChild className="w-fit">
+                <Link href="/settings">Update privacy settings</Link>
+              </Button>
+            )}
           </div>
         )}
 
@@ -363,9 +386,13 @@ function isSameCalendarDay(a: Date, b: Date): boolean {
 function MessageList({
   messages,
   viewerRole,
+  showTimestamps,
+  compact,
 }: {
   messages: ChatMessage[];
   viewerRole: "fan" | "creator";
+  showTimestamps: boolean;
+  compact: boolean;
 }) {
   let previousDate: Date | null = null;
 
@@ -378,7 +405,12 @@ function MessageList({
         return (
           <React.Fragment key={message.id}>
             {showSeparator && <ChatDateSeparator date={message.sentAt} />}
-            <ChatMessageBubble message={message} viewerRole={viewerRole} />
+            <ChatMessageBubble
+              message={message}
+              viewerRole={viewerRole}
+              showTimestamps={showTimestamps}
+              compact={compact}
+            />
           </React.Fragment>
         );
       })}

@@ -50,6 +50,32 @@ export function validatePrice(value: string, range: PriceRange): ValidationResul
   return { valid: true };
 }
 
+export const BIO_MIN_LENGTH = 10;
+export const BIO_MAX_LENGTH = 300;
+
+export function validateBio(value: string): ValidationResult {
+  const trimmed = value.trim();
+  if (trimmed.length < BIO_MIN_LENGTH || trimmed.length > BIO_MAX_LENGTH) {
+    return { valid: false, error: `Bio must be ${BIO_MIN_LENGTH}–${BIO_MAX_LENGTH} characters.` };
+  }
+  return { valid: true };
+}
+
+export const RESPONSE_TIME_LIMITS = { min: 1, max: 1440 };
+
+export function validateResponseTimeMinutes(value: string): ValidationResult {
+  if (!value) return { valid: false, error: "Response time is required." };
+  if (!/^\d+$/.test(value)) return { valid: false, error: "Enter a whole number of minutes." };
+  const minutes = Number(value);
+  if (minutes < RESPONSE_TIME_LIMITS.min || minutes > RESPONSE_TIME_LIMITS.max) {
+    return {
+      valid: false,
+      error: `Must be between ${RESPONSE_TIME_LIMITS.min} and ${RESPONSE_TIME_LIMITS.max} minutes.`,
+    };
+  }
+  return { valid: true };
+}
+
 export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 export const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2MB
 

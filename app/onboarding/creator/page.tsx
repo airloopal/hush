@@ -16,6 +16,7 @@ import { ADULT_CATEGORY, CATEGORIES, isAdultCategory, type Category } from "@/li
 import {
   PRICE_LIMITS,
   readImageAsDataUrl,
+  validateBio,
   validateImageFile,
   validatePrice,
 } from "@/lib/validation";
@@ -65,7 +66,8 @@ export default function CreatorDetailsPage() {
     setAvatarDataUrl(dataUrl);
   }
 
-  const bioValid = bio.trim().length >= 10 && bio.trim().length <= 300;
+  const bioValidation = validateBio(bio);
+  const bioValid = bioValidation.valid;
   const chatValidation = validatePrice(chatPrice, PRICE_LIMITS.chat);
   const photoValidation = validatePrice(photoPrice, PRICE_LIMITS.photo);
   const videoValidation = validatePrice(videoPrice, PRICE_LIMITS.video);

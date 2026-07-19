@@ -6,6 +6,7 @@ import { Bell, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useUnreadNotificationCount } from "@/lib/use-unread-notifications";
 import { cn } from "@/lib/utils";
 
 export interface NavItem {
@@ -17,6 +18,7 @@ export interface NavigationBarProps {
   items?: NavItem[];
   activeHref?: string;
   user?: { name: string; avatarUrl?: string };
+  /** Optional override — omit to use the live unread count automatically. */
   notificationCount?: number;
   className?: string;
 }
@@ -29,13 +31,10 @@ const defaultItems: NavItem[] = [
 ];
 
 /** Primary top navigation. Hidden below `md`; pair with BottomNav on mobile. */
-export function NavigationBar({
-  items = defaultItems,
-  activeHref,
-  user,
-  notificationCount = 0,
-  className,
-}: NavigationBarProps) {
+export function NavigationBar({ items = defaultItems, activeHref, user, notificationCount, className }: NavigationBarProps) {
+  const liveCount = useUnreadNotificationCount();
+  const count = notificationCount ?? liveCount;
+
   return (
     <header
       className={cn(
@@ -75,15 +74,17 @@ export function NavigationBar({
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button variant="ghost" size="icon" aria-label={`Notifications (${notificationCount} unread)`}>
-            <span className="relative">
-              <Bell className="h-4 w-4" />
-              {notificationCount > 0 && (
-                <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-pill bg-danger px-1 font-mono-data text-[10px] text-white">
-                  {notificationCount > 9 ? "9+" : notificationCount}
-                </span>
-              )}
-            </span>
+          <Button variant="ghost" size="icon" aria-label={`Notifications (${count} unread)`} asChild>
+            <Link href="/notifications">
+              <span className="relative">
+                <Bell className="h-4 w-4" />
+                {count > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-pill bg-danger px-1 font-mono-data text-[10px] text-white">
+                    {count > 9 ? "9+" : count}
+                  </span>
+                )}
+              </span>
+            </Link>
           </Button>
           {user && <Avatar src={user.avatarUrl} alt={user.name} size="sm" />}
         </div>

@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Compass, MessagesSquare, LayoutGrid, Settings, type LucideIcon } from "lucide-react";
+import { Bell, Compass, MessagesSquare, LayoutGrid, Settings, type LucideIcon } from "lucide-react";
+import { useUnreadNotificationCount } from "@/lib/use-unread-notifications";
 import { cn } from "@/lib/utils";
 
 export interface BottomNavItem {
@@ -12,13 +13,6 @@ export interface BottomNavItem {
   badge?: number;
 }
 
-const defaultItems: BottomNavItem[] = [
-  { label: "Discover", href: "/discover", icon: Compass },
-  { label: "Chats", href: "/chats", icon: MessagesSquare },
-  { label: "Dashboard", href: "/dashboard", icon: LayoutGrid },
-  { label: "Settings", href: "/settings", icon: Settings },
-];
-
 export interface BottomNavProps {
   items?: BottomNavItem[];
   activeHref?: string;
@@ -26,7 +20,17 @@ export interface BottomNavProps {
 }
 
 /** Fixed bottom tab bar shown below `md`. Pair with NavigationBar. */
-export function BottomNav({ items = defaultItems, activeHref, className }: BottomNavProps) {
+export function BottomNav({ items, activeHref, className }: BottomNavProps) {
+  const notificationCount = useUnreadNotificationCount();
+
+  const resolvedItems: BottomNavItem[] = items ?? [
+    { label: "Discover", href: "/discover", icon: Compass },
+    { label: "Chats", href: "/chats", icon: MessagesSquare },
+    { label: "Alerts", href: "/notifications", icon: Bell, badge: notificationCount },
+    { label: "Dashboard", href: "/dashboard", icon: LayoutGrid },
+    { label: "Settings", href: "/settings", icon: Settings },
+  ];
+
   return (
     <nav
       className={cn(
@@ -36,7 +40,7 @@ export function BottomNav({ items = defaultItems, activeHref, className }: Botto
       )}
       aria-label="Primary"
     >
-      {items.map((item) => {
+      {resolvedItems.map((item) => {
         const isActive = activeHref === item.href;
         const Icon = item.icon;
         return (
@@ -50,7 +54,7 @@ export function BottomNav({ items = defaultItems, activeHref, className }: Botto
               <Icon className={cn("h-5 w-5", isActive && "text-emerald")} strokeWidth={isActive ? 2.25 : 2} />
               {item.badge ? (
                 <span className="absolute -right-2 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-pill bg-danger px-1 font-mono-data text-[9px] text-white">
-                  {item.badge}
+                  {item.badge > 9 ? "9+" : item.badge}
                 </span>
               ) : null}
             </span>

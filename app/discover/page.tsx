@@ -10,6 +10,7 @@ import { useRequireAccount } from "@/lib/use-account-guard";
 import { hasAdultAccess } from "@/lib/account";
 import { MOCK_CREATORS } from "@/lib/creators";
 import { readDiscoverFilters, writeDiscoverFilters } from "@/lib/discover-session";
+import { getPrivacySettings } from "@/lib/preferences";
 import type { Category } from "@/lib/categories";
 import {
   filterByAdultAccess,
@@ -28,6 +29,7 @@ export default function DiscoverPage() {
   const [search, setSearch] = React.useState("");
   const [category, setCategory] = React.useState<CategoryFilter>("All");
   const [restored, setRestored] = React.useState(false);
+  const [allowRecommendations] = React.useState(() => getPrivacySettings().allowCreatorRecommendations);
 
   const adultAllowed = hasAdultAccess(account);
 
@@ -104,20 +106,24 @@ export default function DiscoverPage() {
               emptyMessage="No creators are active right now."
               layout="row"
             />
-            <CreatorSection
-              title="Sponsored"
-              description="Boosted creator placements."
-              creators={getSponsoredCreators(visibleCreators)}
-              emptyMessage="No sponsored creators right now."
-              layout="row"
-            />
-            <CreatorSection
-              title="New Creators"
-              description="Recently joined Hush."
-              creators={getNewCreators(visibleCreators)}
-              emptyMessage="No new creators right now."
-              layout="row"
-            />
+            {allowRecommendations && (
+              <>
+                <CreatorSection
+                  title="Sponsored"
+                  description="Boosted creator placements."
+                  creators={getSponsoredCreators(visibleCreators)}
+                  emptyMessage="No sponsored creators right now."
+                  layout="row"
+                />
+                <CreatorSection
+                  title="New Creators"
+                  description="Recently joined Hush."
+                  creators={getNewCreators(visibleCreators)}
+                  emptyMessage="No new creators right now."
+                  layout="row"
+                />
+              </>
+            )}
             <CreatorSection
               title="All Creators"
               creators={sortAllCreators(visibleCreators)}

@@ -1,24 +1,32 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { RotateCcw, ShieldCheck } from "lucide-react";
 
 import { NavigationBar } from "@/components/navigation-bar";
 import { BottomNav } from "@/components/bottom-nav";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Avatar } from "@/components/ui/avatar";
-import { CategoryPill } from "@/components/ui/category-pill";
+import { ProfileSection } from "@/components/settings/profile-section";
+import { AppearanceSection } from "@/components/settings/appearance-section";
+import { PrivacySection } from "@/components/settings/privacy-section";
+import { ChatPreferencesSection } from "@/components/settings/chat-preferences-section";
+import { NotificationsSection } from "@/components/settings/notifications-section";
+import { SafetySection } from "@/components/settings/safety-section";
+import { PurchasesSection } from "@/components/settings/purchases-section";
+import { DeveloperSection } from "@/components/settings/developer-section";
 import { useRequireAccount } from "@/lib/use-account-guard";
 import { resetLocalAccount } from "@/lib/account";
+import type { Account } from "@/lib/types";
 
 const isDev = process.env.NODE_ENV !== "production";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { ready, account } = useRequireAccount();
+  const { ready, account: loadedAccount } = useRequireAccount();
+  const [account, setAccount] = React.useState<Account | null>(null);
+
+  React.useEffect(() => {
+    if (loadedAccount) setAccount(loadedAccount);
+  }, [loadedAccount]);
 
   function handleReset() {
     resetLocalAccount();
@@ -31,72 +39,17 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-background pb-24 md:pb-0">
       <NavigationBar activeHref="/settings" user={{ name: account.username }} />
 
-      <main className="container flex max-w-lg flex-col gap-6 py-10">
+      <main className="container flex max-w-2xl flex-col gap-6 py-10">
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
 
-        <Card>
-          <CardHeader className="flex-row items-center gap-3">
-            <Avatar
-              src={account.role === "creator" ? account.avatarDataUrl : undefined}
-              alt={account.username}
-              size="lg"
-            />
-            <div className="flex flex-col">
-              <CardTitle className="text-base">@{account.username}</CardTitle>
-              <CardDescription className="capitalize">{account.role} account</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {account.role === "creator" ? (
-              <>
-                <CategoryPill variant={account.isAdult ? "amber" : "neutral"}>
-                  {account.category}
-                </CategoryPill>
-                <p className="text-sm text-text-secondary">{account.bio}</p>
-              </>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {account.interests.map((interest) => (
-                  <CategoryPill key={interest} variant={interest === "Adult 18+" ? "amber" : "neutral"}>
-                    {interest}
-                  </CategoryPill>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {account.role === "fan" && (
-          <Card className="overflow-hidden transition-colors duration-fast ease-signal hover:bg-surface-muted">
-            <Link href="/settings/safety" className="flex items-center gap-3 p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald focus-visible:ring-inset">
-              <span className="flex h-9 w-9 items-center justify-center rounded-md bg-emerald/10 text-emerald">
-                <ShieldCheck className="h-5 w-5" />
-              </span>
-              <div className="flex flex-col">
-                <CardTitle className="text-base">Safety Centre</CardTitle>
-                <CardDescription>Blocked creators, reports, and payment issues</CardDescription>
-              </div>
-            </Link>
-          </Card>
-        )}
-
-        {isDev && (
-          <Card className="border-danger/30">
-            <CardHeader>
-              <CardTitle className="text-base">Developer tools</CardTitle>
-              <CardDescription>
-                Local-only. Clears hush:account and hush:onboarding-state from this browser and
-                restarts onboarding. Not available in production builds.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="destructive" onClick={handleReset}>
-                <RotateCcw className="h-4 w-4" />
-                Reset local account
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        <ProfileSection account={account} onAccountChange={setAccount} />
+        <AppearanceSection />
+        <PrivacySection />
+        <ChatPreferencesSection />
+        <NotificationsSection />
+        {account.role === "fan" && <SafetySection />}
+        {account.role === "fan" && <PurchasesSection fanUsername={account.username} />}
+        {isDev && <DeveloperSection onReset={handleReset} />}
       </main>
 
       <BottomNav activeHref="/settings" />

@@ -67,6 +67,8 @@ export interface CreatorAccount {
   adultConfirmed: boolean;
   adultConfirmedAt?: string;
   createdAt: string;
+  /** Self-reported average reply time in minutes, editable from Settings. */
+  responseTimeMinutes?: number;
 }
 
 export type Account = FanAccount | CreatorAccount;

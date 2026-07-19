@@ -10,6 +10,8 @@ import {
 } from "@/lib/chat-storage";
 import { getLastReadAt, setLastReadNow } from "@/lib/conversation-reads";
 import { generateId } from "@/lib/id";
+import { createNotification, createNotificationOnce } from "@/lib/notifications";
+import { getNotificationPreferences } from "@/lib/preferences";
 import type {
   ChatMessage,
   ChatMessageType,
@@ -206,6 +208,20 @@ export function addMessage(
     type,
   };
   saveAllMessages([...getAllMessages(), message]);
+
+  if (senderRole === "creator" && type === "text" && getNotificationPreferences().notifyOnCreatorReply) {
+    const session = getAllSessions().find((s) => s.id === sessionId);
+    if (session) {
+      createNotification({
+        type: "creator-replied",
+        recipientUsername: session.fanUsername,
+        title: "Creator replied",
+        description: `@${senderUsername} sent you a message.`,
+        relatedId: message.id,
+      });
+    }
+  }
+
   return message;
 }
 
@@ -224,6 +240,10 @@ export function getLastMessage(sessionId: string): ChatMessage | undefined {
 
 export function getMediaPurchasesForSession(sessionId: string): MediaPurchase[] {
   return getAllMediaPurchases().filter((p) => p.sessionId === sessionId);
+}
+
+export function getAllMediaPurchasesForFan(fanUsername: string): MediaPurchase[] {
+  return getAllMediaPurchases().filter((p) => p.fanUsername === fanUsername);
 }
 
 export function createMediaPurchase(
@@ -289,6 +309,15 @@ export function fulfillMediaPurchase(purchase: MediaPurchase): MediaPurchase | u
         : "Live video marked as delivered. Prototype only — no real file was sent.",
       "media-request"
     );
+    if (getNotificationPreferences().notifyOnMediaFulfilled) {
+      createNotification({
+        type: purchase.mediaType === "photo" ? "live-photo-fulfilled" : "live-video-fulfilled",
+        recipientUsername: purchase.fanUsername,
+        title: purchase.mediaType === "photo" ? "Live photo fulfilled" : "Live video fulfilled",
+        description: `@${purchase.creatorUsername} marked your ${purchase.mediaType} request as delivered.`,
+        relatedId: purchase.id,
+      });
+    }
   }
   return updated;
 }
@@ -424,4 +453,38 @@ export function sortFanChatSessions(sessions: ChatSession[]): ChatSession[] {
 
     return lastActivityTime(b) - lastActivityTime(a);
   });
+}
+
+// ---------------------------------------------------------------------------
+// Expiry notifications — lazily detected on page load rather than pushed,
+// since this prototype has no server/WebSocket to fire them at the exact
+// moment they occur. createNotificationOnce (keyed by session id) keeps
+// repeated calls from ever duplicating a notification.
+// ---------------------------------------------------------------------------
+
+export function syncFanExpiryNotifications(fanUsername: string): void {
+  const preferences = getNotificationPreferences();
+  if (!preferences.notifyOnExpiryWarning) return;
+
+  for (const session of getAllSessionsForFan(fanUsername)) {
+    if (isSessionActive(session)) {
+      if (isExpiringSoon(session)) {
+        createNotificationOnce({
+          type: "chat-expiring",
+          recipientUsername: fanUsername,
+          title: "Chat expires soon",
+          description: `Your chat with @${session.creatorUsername} expires in less than an hour.`,
+          relatedId: `${session.id}:expiring`,
+        });
+      }
+    } else {
+      createNotificationOnce({
+        type: "chat-expired",
+        recipientUsername: fanUsername,
+        title: "Chat expired",
+        description: `Your 24-hour chat access with @${session.creatorUsername} has ended.`,
+        relatedId: `${session.id}:expired`,
+      });
+    }
+  }
 }

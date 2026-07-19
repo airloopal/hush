@@ -20,6 +20,7 @@ import { hasAdultAccess } from "@/lib/account";
 import { findCreatorByUsername } from "@/lib/discovery";
 import { MOCK_CREATORS } from "@/lib/creators";
 import { findActiveSession, findLatestSession, isCreatorBlocked } from "@/lib/chat";
+import { getPrivacySettings } from "@/lib/preferences";
 import { formatPresence } from "@/lib/utils";
 import type { Account } from "@/lib/types";
 import type { ChatSession } from "@/lib/chat-types";
@@ -158,6 +159,8 @@ function ChatCta({
 
   const active = session && findActiveSession(fanUsername, creator.username);
   const blocked = isCreatorBlocked(creator.username);
+  const isRenewal = !!session && !active;
+  const renewalsDisabled = isRenewal && !getPrivacySettings().allowChatRenewals;
 
   if (active) {
     return (
@@ -180,6 +183,13 @@ function ChatCta({
           You've blocked this creator, so chat access is unavailable. Unblock them from Settings
           to unlock chat again.
         </p>
+      ) : renewalsDisabled ? (
+        <p className="text-xs text-text-secondary">
+          Chat renewals are turned off in your privacy settings.{" "}
+          <Link href="/settings" className="underline underline-offset-2">
+            Update settings
+          </Link>
+        </p>
       ) : (
         session && (
           <p className="text-xs text-text-secondary">
@@ -196,7 +206,7 @@ function ChatCta({
         videoPrice={creator.videoPrice}
         mode={session ? "renew" : "new"}
         triggerLabel={session ? "Unlock Another 24 Hours" : "Unlock Chat"}
-        disabled={blocked}
+        disabled={blocked || renewalsDisabled}
         onUnlocked={() => router.push(`/chats/${creator.username}`)}
       />
     </div>
