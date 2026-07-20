@@ -312,7 +312,11 @@ export function seedDemoDataIfNeeded(): void {
     { id: "demo-s-beats", creatorUsername: "beatsbyremy", fanUsername: FAN_USERNAME, startedHoursAgo: 140, txn: 5 },
     now
   );
-  sessions.push(sMaya, sTheo, sInes, sPixel, sBeats);
+  const sElle = buildSession(
+    { id: "demo-s-elle", creatorUsername: "styledby_elle", fanUsername: FAN_USERNAME, startedHoursAgo: 200, txn: 6 },
+    now
+  );
+  sessions.push(sMaya, sTheo, sInes, sPixel, sBeats, sElle);
 
   // Maya — the shared conversation. Rich thread: photo fulfilled, video pending.
   messages.push(
@@ -416,6 +420,23 @@ export function seedDemoDataIfNeeded(): void {
     messages.push(...m);
   }
 
+  // Elle — expired, Fashion, a clean fully-resolved conversation.
+  messages.push(
+    unlockMessage(sElle),
+    msg(sElle, "fan", FAN_USERNAME, "I've got a wedding in a few weeks and no idea what to wear. Help?", 4),
+    msg(sElle, "creator", "styledby_elle", "Ooh exciting! What's the dress code, and do you already own a go-to blazer?", 12),
+    msg(sElle, "fan", FAN_USERNAME, "Cocktail attire, and yes — a navy one. Could I get a photo of a few pairing ideas?", 18)
+  );
+  {
+    const { purchase: p, messages: m } = purchase(sElle, "photo", "fulfilled", 19);
+    purchases.push(p);
+    messages.push(...m);
+  }
+  messages.push(
+    msg(sElle, "creator", "styledby_elle", "Sent! Try it with a cream shirt instead of white, much warmer for evening light.", 27),
+    msg(sElle, "fan", FAN_USERNAME, "That's such a good call, thank you — exactly what I needed.", 35)
+  );
+
   // -------------------------------------------------------------------
   // Maya's other conversations (14 active + 6 expired, fictional fans)
   // Distribution: 6 active get 1 fulfilled each, 7 active get 1 pending
@@ -482,6 +503,27 @@ export function seedDemoDataIfNeeded(): void {
       messages.push(...m);
     }
   });
+
+  // Returning fan: jordan_b (already has an active session above) also had
+  // an earlier expired one with Maya — gives the fan-return-rate metric a
+  // believable, non-zero value instead of every fan being brand new.
+  const sJordanReturn = buildSession(
+    {
+      id: "demo-s-jordan-return",
+      creatorUsername: CREATOR_USERNAME,
+      fanUsername: "jordan_b",
+      startedHoursAgo: 400,
+      txn: extraTxn++,
+    },
+    now
+  );
+  sessions.push(sJordanReturn);
+  messages.push(...fillerConversation(sJordanReturn, 1));
+  {
+    const { purchase: p, messages: m } = purchase(sJordanReturn, "photo", "fulfilled", 30);
+    purchases.push(p);
+    messages.push(...m);
+  }
 
   saveAllSessions([...getAllSessions(), ...sessions]);
   saveAllMessages([...getAllMessages(), ...messages]);
@@ -580,14 +622,16 @@ export function seedDemoDataIfNeeded(): void {
     notification({ type: "creator-replied", title: "Creator replied", description: "@mayaokoye sent you a message.", hoursAgo: 4, read: false, relatedId: sMaya.id, now }),
     notification({ type: "creator-replied", title: "Creator replied", description: "@theolinds sent you a message.", hoursAgo: 8, read: false, relatedId: sTheo.id, now }),
     notification({ type: "creator-replied", title: "Creator replied", description: "@inescarvalho sent you a message.", hoursAgo: 21, read: true, relatedId: sInes.id, now }),
-    notification({ type: "live-photo-fulfilled", title: "Live photo fulfilled", description: "@mayaokoye marked your photo request as delivered.", hoursAgo: 5, read: true, relatedId: sMaya.id, now }),
-    notification({ type: "live-video-fulfilled", title: "Live video fulfilled", description: "@inescarvalho marked your video request as delivered.", hoursAgo: 21, read: false, relatedId: sInes.id, now }),
-    notification({ type: "chat-expiring", title: "Chat expires soon", description: "Your chat with @inescarvalho expires in less than an hour.", hoursAgo: 1, read: false, relatedId: `${sInes.id}:expiring`, now }),
+    notification({ type: "live-photo-fulfilled", title: "Live photo delivered", description: "@mayaokoye marked your photo request as delivered.", hoursAgo: 5, read: true, relatedId: sMaya.id, now }),
+    notification({ type: "live-video-fulfilled", title: "Creator sent video", description: "@inescarvalho marked your video request as delivered.", hoursAgo: 21, read: false, relatedId: sInes.id, now }),
+    notification({ type: "chat-expiring", title: "Conversation expires in 1 hour", description: "Your chat with @inescarvalho expires soon.", hoursAgo: 1, read: false, relatedId: `${sInes.id}:expiring`, now }),
     notification({ type: "chat-expired", title: "Chat expired", description: "Your 24-hour chat access with @pixel_priya has ended.", hoursAgo: 26, read: true, relatedId: `${sPixel.id}:expired`, now }),
     notification({ type: "chat-expired", title: "Chat expired", description: "Your 24-hour chat access with @beatsbyremy has ended.", hoursAgo: 116, read: true, relatedId: `${sBeats.id}:expired`, now }),
-    notification({ type: "purchase-completed", title: "Purchase completed", description: "24-hour chat access with @mayaokoye is now active.", hoursAgo: 5, read: true, relatedId: sMaya.id, now }),
+    notification({ type: "chat-renewed", title: "Conversation renewed", description: "Your chat with @mayaokoye was renewed for another 24 hours.", hoursAgo: 5, read: false, relatedId: sMaya.id, now }),
+    notification({ type: "purchase-completed", title: "Purchase successful", description: "24-hour chat access with @mayaokoye is now active.", hoursAgo: 5, read: true, relatedId: sMaya.id, now }),
     notification({ type: "payment-issue-updated", title: "Payment issue updated", description: "Your incorrect-charge report for @theolinds was resolved.", hoursAgo: 6, read: true, relatedId: paymentIssues[0].id, now }),
-    notification({ type: "report-updated", title: "Report updated", description: "Your report about @mayaokoye was resolved.", hoursAgo: 5, read: false, relatedId: reports[0].id, now }),
+    notification({ type: "report-updated", title: "Report updated", description: "Your report about @mayaokoye was resolved.", hoursAgo: 5, read: true, relatedId: reports[0].id, now }),
+    notification({ type: "creator-replied", title: "Creator replied", description: "@styledby_elle sent you a message.", hoursAgo: 200, read: true, relatedId: sElle.id, now }),
   ];
   saveAllNotifications([...getAllNotifications(), ...notifications]);
 

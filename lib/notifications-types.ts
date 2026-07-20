@@ -10,6 +10,7 @@ export type NotificationType =
   | "creator-replied"
   | "chat-expiring"
   | "chat-expired"
+  | "chat-renewed"
   | "live-photo-fulfilled"
   | "live-video-fulfilled"
   | "purchase-completed"
