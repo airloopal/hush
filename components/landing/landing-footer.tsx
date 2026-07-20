@@ -1,34 +1,45 @@
+"use client";
+
 import Link from "next/link";
 import { MessageCircle } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
-const FOOTER_COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
+// href: null marks a link as not built yet — rendered as a clearly labeled
+// "Coming Soon" control instead of a dead `#` link, per Stage 5A.2 §11.
+const FOOTER_COLUMNS: { title: string; links: { label: string; href: string | null }[] }[] = [
   {
     title: "Company",
     links: [
-      { label: "About", href: "#" },
-      { label: "Safety", href: "/settings/safety" },
-      { label: "Support", href: "#" },
-      { label: "Help Centre", href: "#" },
+      { label: "About", href: null },
+      { label: "Safety", href: "/safety" },
+      { label: "Support", href: null },
+      { label: "Help Centre", href: null },
     ],
   },
   {
     title: "Legal",
     links: [
-      { label: "Privacy", href: "#" },
-      { label: "Terms", href: "#" },
-      { label: "Creator Terms", href: "#" },
+      { label: "Privacy", href: null },
+      { label: "Terms", href: null },
+      { label: "Creator Terms", href: null },
     ],
   },
   {
     title: "Get started",
     links: [
-      { label: "Log In", href: "/discover" },
-      { label: "Become a Creator", href: "/onboarding/account-type" },
+      { label: "Log In", href: "/login" },
+      { label: "Become a Creator", href: "/login" },
     ],
   },
 ];
 
 export function LandingFooter() {
+  const { toast } = useToast();
+
+  function comingSoon(label: string) {
+    toast({ title: label, description: "This page isn't part of the demo yet.", variant: "default" });
+  }
+
   return (
     <footer className="py-14">
       <div className="container flex flex-col gap-10">
@@ -54,12 +65,25 @@ export function LandingFooter() {
                 <ul className="flex flex-col gap-2">
                   {column.links.map((link) => (
                     <li key={link.label}>
-                      <Link
-                        href={link.href}
-                        className="text-sm text-text-secondary transition-colors duration-fast ease-signal hover:text-text-primary"
-                      >
-                        {link.label}
-                      </Link>
+                      {link.href ? (
+                        <Link
+                          href={link.href}
+                          className="text-sm text-text-secondary transition-colors duration-fast ease-signal hover:text-text-primary"
+                        >
+                          {link.label}
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => comingSoon(link.label)}
+                          className="text-sm text-text-muted transition-colors duration-fast ease-signal hover:text-text-primary"
+                        >
+                          {link.label}
+                          <span className="ml-1.5 text-[10px] uppercase tracking-wide text-text-muted">
+                            (Coming Soon)
+                          </span>
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>

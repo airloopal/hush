@@ -28,8 +28,15 @@ export function useRedirectIfOnboarded(): { ready: boolean } {
 }
 
 /**
- * Use on account-gated pages (/dashboard, /chats). Redirects to the start
- * of onboarding if no local account exists yet.
+ * Use on account-gated pages (/dashboard, /discover, /chats, etc). Redirects
+ * to /login if no local account/demo session exists yet.
+ *
+ * NOTE (Stage 5A.2): this used to redirect into /onboarding/account-type.
+ * Demo login (see lib/demo-auth.ts) is now the front door — it seeds this
+ * same hush:account record via its bridge, so this hook's contract to
+ * existing pages is unchanged; only the redirect target moved. A real
+ * production auth integration would replace the `getAccount()` check below
+ * with a real session check.
  */
 export function useRequireAccount(): { ready: boolean; account: Account | null } {
   const router = useRouter();
@@ -41,11 +48,33 @@ export function useRequireAccount(): { ready: boolean; account: Account | null }
   React.useEffect(() => {
     const account = getAccount();
     if (!account) {
-      router.replace("/onboarding/account-type");
+      router.replace("/login");
       return;
     }
     setState({ ready: true, account });
   }, [router]);
 
   return state;
+}
+
+/**
+ * Same as useRequireAccount, but additionally redirects a signed-in account
+ * of the wrong role to their own home route — e.g. a creator landing on
+ * /discover gets sent to /dashboard instead. Used only by the small set of
+ * pages that are genuinely role-specific (Discover, the fan chat list,
+ * Dashboard); shared pages (Settings, Notifications, per-conversation chat)
+ * intentionally keep using the plain useRequireAccount above.
+ */
+export function useRequireRole(role: "fan" | "creator"): { ready: boolean; account: Account | null } {
+  const router = useRouter();
+  const { ready, account } = useRequireAccount();
+
+  React.useEffect(() => {
+    if (ready && account && account.role !== role) {
+      router.replace(homeRouteForAccount(account));
+    }
+  }, [ready, account, role, router]);
+
+  const roleMatches = !!account && account.role === role;
+  return { ready: ready && roleMatches, account: roleMatches ? account : null };
 }

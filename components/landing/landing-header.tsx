@@ -42,13 +42,13 @@ export function LandingHeader() {
         <div className="hidden items-center gap-2 lg:flex">
           <ThemeToggle />
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/discover">Log In</Link>
+            <Link href="/login">Log In</Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link href="/onboarding/account-type">Join Free</Link>
+            <Link href="/login">Join Free</Link>
           </Button>
           <Button size="sm" asChild>
-            <Link href="/onboarding/account-type">Become a Creator</Link>
+            <Link href="/login">Become a Creator</Link>
           </Button>
         </div>
 
@@ -87,17 +87,17 @@ export function LandingHeader() {
           ))}
           <div className="mt-2 flex flex-col gap-2 border-t border-border pt-3">
             <Button variant="ghost" asChild>
-              <Link href="/discover" onClick={() => setMobileOpen(false)}>
+              <Link href="/login" onClick={() => setMobileOpen(false)}>
                 Log In
               </Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link href="/onboarding/account-type" onClick={() => setMobileOpen(false)}>
+              <Link href="/login" onClick={() => setMobileOpen(false)}>
                 Join Free
               </Link>
             </Button>
             <Button asChild>
-              <Link href="/onboarding/account-type" onClick={() => setMobileOpen(false)}>
+              <Link href="/login" onClick={() => setMobileOpen(false)}>
                 Become a Creator
               </Link>
             </Button>

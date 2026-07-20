@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Bell, Compass, MessagesSquare, LayoutGrid, Settings, type LucideIcon } from "lucide-react";
+import { Bell, Compass, LayoutGrid, MessagesSquare, Settings, Users, type LucideIcon } from "lucide-react";
 import { useUnreadNotificationCount } from "@/lib/use-unread-notifications";
+import { useCurrentDemoUser } from "@/lib/use-demo-session";
 import { cn } from "@/lib/utils";
 
 export interface BottomNavItem {
@@ -22,14 +23,30 @@ export interface BottomNavProps {
 /** Fixed bottom tab bar shown below `md`. Pair with NavigationBar. */
 export function BottomNav({ items, activeHref, className }: BottomNavProps) {
   const notificationCount = useUnreadNotificationCount();
+  const session = useCurrentDemoUser();
 
-  const resolvedItems: BottomNavItem[] = items ?? [
+  const fanItems: BottomNavItem[] = [
+    { label: "Discover", href: "/discover", icon: Compass },
+    { label: "Chats", href: "/chats", icon: MessagesSquare },
+    { label: "Alerts", href: "/notifications", icon: Bell, badge: notificationCount },
+    { label: "Settings", href: "/settings", icon: Settings },
+  ];
+  const creatorItems: BottomNavItem[] = [
+    { label: "Dashboard", href: "/dashboard", icon: LayoutGrid },
+    { label: "Conversations", href: "/conversations", icon: Users },
+    { label: "Alerts", href: "/notifications", icon: Bell, badge: notificationCount },
+    { label: "Settings", href: "/settings", icon: Settings },
+  ];
+  const fallbackItems: BottomNavItem[] = [
     { label: "Discover", href: "/discover", icon: Compass },
     { label: "Chats", href: "/chats", icon: MessagesSquare },
     { label: "Alerts", href: "/notifications", icon: Bell, badge: notificationCount },
     { label: "Dashboard", href: "/dashboard", icon: LayoutGrid },
     { label: "Settings", href: "/settings", icon: Settings },
   ];
+
+  const resolvedItems: BottomNavItem[] =
+    items ?? (session?.role === "creator" ? creatorItems : session?.role === "fan" ? fanItems : fallbackItems);
 
   return (
     <nav

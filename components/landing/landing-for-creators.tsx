@@ -30,7 +30,7 @@ export function LandingForCreators() {
           </p>
           <div>
             <Button asChild>
-              <Link href="/onboarding/account-type">
+              <Link href="/login">
                 Become a Creator
                 <ArrowRight className="h-4 w-4" />
               </Link>

@@ -21,7 +21,7 @@ export function LandingForFans() {
           </h2>
           <p className="text-text-secondary">
             No recurring charges, no confusing coin bundles — just a simple, one-time payment for
-            24 hours of a creator's full attention.
+            24 hours of unlimited private messaging.
           </p>
         </Reveal>
 

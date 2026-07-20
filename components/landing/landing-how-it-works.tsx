@@ -6,7 +6,7 @@ const STEPS = [
   {
     icon: Compass,
     title: "Find a creator",
-    description: "Browse verified creator profiles across every category.",
+    description: "Browse creator profiles across every category.",
   },
   {
     icon: MessageCircle,

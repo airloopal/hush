@@ -44,7 +44,7 @@ export function LandingHero() {
               </Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link href="/onboarding/account-type">Become a Creator</Link>
+              <Link href="/login">Become a Creator</Link>
             </Button>
           </Reveal>
         </div>
