@@ -110,9 +110,9 @@ export function SafetyMenu({ session, viewerRole, onBlocked }: SafetyMenuProps) 
                 <BackButton onClick={() => setView("menu")} />
                 <ModalTitle>Block @{session.creatorUsername}?</ModalTitle>
                 <ModalDescription>
-                  You won't be able to send or receive messages in this conversation anymore, and
-                  you won't be able to unlock a new chat with them until you unblock. This only
-                  affects this browser and doesn't delete your message history.
+                  You won&apos;t be able to send or receive messages in this conversation anymore, and
+                  you won&apos;t be able to unlock a new chat with them until you unblock. This only
+                  affects this browser and doesn&apos;t delete your message history.
                 </ModalDescription>
               </ModalHeader>
               <ModalFooter>

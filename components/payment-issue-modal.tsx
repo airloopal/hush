@@ -72,7 +72,7 @@ export function PaymentIssueModal({
             <ModalHeader>
               <ModalTitle>Payment issue</ModalTitle>
               <ModalDescription>
-                This is a prototype — no real payments were made. Choose what happened and we'll
+                This is a prototype — no real payments were made. Choose what happened and we&apos;ll
                 log it against this conversation.
               </ModalDescription>
             </ModalHeader>
@@ -118,7 +118,7 @@ export function PaymentIssueModal({
             <ModalHeader>
               <ModalTitle>Report this payment issue?</ModalTitle>
               <ModalDescription>
-                You're reporting <strong>{selectedTypeLabel}</strong> for your conversation with @
+                You&apos;re reporting <strong>{selectedTypeLabel}</strong> for your conversation with @
                 {creatorUsername}.
               </ModalDescription>
             </ModalHeader>

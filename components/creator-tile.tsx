@@ -1,6 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { Camera, Sparkles, Video } from "lucide-react";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
@@ -71,12 +71,24 @@ export function CreatorTile({ creator, className }: CreatorTileProps) {
             {creator.category}
           </CategoryPill>
           <p className="line-clamp-2 text-sm text-text-secondary">{creator.bio}</p>
-          <div className="mt-auto flex items-center justify-between border-t border-border pt-3">
-            <ResponseTimeChip minutes={creator.averageReplyMinutes} />
-            <span className="inline-flex items-center gap-1 rounded-pill bg-emerald/10 px-2.5 py-1 font-mono-data text-sm font-semibold text-emerald">
-              ${creator.chatPrice}
-              <span className="text-[11px] font-medium text-emerald/70">/24h</span>
-            </span>
+          <div className="mt-auto flex flex-col gap-2 border-t border-border pt-3">
+            <div className="flex items-center justify-between">
+              <ResponseTimeChip minutes={creator.averageReplyMinutes} />
+              <span className="inline-flex items-center gap-1 rounded-pill bg-emerald/10 px-2.5 py-1 font-mono-data text-sm font-semibold text-emerald">
+                ${creator.chatPrice}
+                <span className="text-[11px] font-medium text-emerald/70">/24h</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-[11px] text-text-muted">
+              <span className="flex items-center gap-1">
+                <Camera className="h-3 w-3" aria-hidden="true" />
+                <span className="font-mono-data">${creator.photoPrice}</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <Video className="h-3 w-3" aria-hidden="true" />
+                <span className="font-mono-data">${creator.videoPrice}</span>
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>

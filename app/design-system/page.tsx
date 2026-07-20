@@ -191,7 +191,7 @@ export default function Home() {
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold">Core example — 24-hour chat access</h2>
           <p className="max-w-2xl text-sm text-text-secondary">
-            Hush's core unit: a creator sells a 24-hour access window with unlimited text
+            Hush&apos;s core unit: a creator sells a 24-hour access window with unlimited text
             included, plus separately priced live photo and live video options. Presence and
             the access countdown update automatically.
           </p>

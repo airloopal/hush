@@ -72,7 +72,7 @@ export function ReportModal({
             <ModalHeader>
               <ModalTitle>Report conversation</ModalTitle>
               <ModalDescription>
-                Reporting @{creatorUsername} is local to this prototype and isn't sent anywhere.
+                Reporting @{creatorUsername} is local to this prototype and isn&apos;t sent anywhere.
                 Choose the reason that fits best.
               </ModalDescription>
             </ModalHeader>
@@ -128,7 +128,7 @@ export function ReportModal({
             <ModalHeader>
               <ModalTitle>Submit this report?</ModalTitle>
               <ModalDescription>
-                You're reporting @{creatorUsername} for <strong>{selectedReasonLabel}</strong>. This
+                You&apos;re reporting @{creatorUsername} for <strong>{selectedReasonLabel}</strong>. This
                 is stored locally in this prototype for review.
               </ModalDescription>
             </ModalHeader>

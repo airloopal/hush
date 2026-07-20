@@ -234,7 +234,7 @@ function ChatConversation({
         <header className="flex flex-wrap items-center gap-2 border-b border-border p-3">
           <Avatar src={headerAvatar} alt={headerUsername} size="md" online={isFanViewer ? mockCreator?.isOnline : undefined} />
           <div className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate font-semibold leading-tight">@{headerUsername}</span>
+            <h1 className="truncate font-semibold leading-tight">@{headerUsername}</h1>
             {presenceLabel && <span className="text-xs text-text-secondary">{presenceLabel}</span>}
           </div>
           <div className="flex items-center gap-2" aria-live="polite">
@@ -307,7 +307,7 @@ function ChatConversation({
         {isFanViewer && blocked && (
           <div className="flex items-center gap-2 border-t border-border bg-danger-bg p-3 text-sm text-danger">
             <UserX className="h-4 w-4 shrink-0" aria-hidden="true" />
-            You've blocked this creator. They can no longer send you messages, and messaging is
+            You&apos;ve blocked this creator. They can no longer send you messages, and messaging is
             disabled.
           </div>
         )}

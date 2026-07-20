@@ -18,6 +18,7 @@ import { Countdown } from "@/components/countdown";
 import { CreatorStatsRow } from "@/components/creator-stats-row";
 import { CreatorReviews } from "@/components/creator-reviews";
 import { CreatorSocialProof } from "@/components/creator-social-proof";
+import { CreatorRecentPurchases } from "@/components/creator-recent-purchases";
 import { ResponseTimeChip } from "@/components/response-time-chip";
 import { FavoriteButton } from "@/components/favorite-button";
 import { Reveal } from "@/components/landing/reveal";
@@ -96,7 +97,7 @@ export default function CreatorProfilePage() {
         <CardHeader className="flex-row items-center gap-4 -mt-8">
           <Avatar src={creator.avatarUrl} alt={creator.username} size="xl" online={creator.isOnline} />
           <div className="flex flex-1 flex-col gap-1.5">
-            <span className="text-xl font-semibold leading-tight">@{creator.username}</span>
+            <h1 className="text-xl font-semibold leading-tight">@{creator.username}</h1>
             <span className="text-sm text-text-secondary">
               {formatPresence(creator.isOnline, creator.lastSeenMinutes)}
             </span>
@@ -154,8 +155,9 @@ export default function CreatorProfilePage() {
       </Card>
       </Reveal>
 
-      <div className="max-w-lg">
+      <div className="flex max-w-lg flex-col gap-6">
         <CreatorReviews />
+        <CreatorRecentPurchases creatorUsername={creator.username} />
       </div>
     </ProfileShell>
   );
@@ -206,7 +208,7 @@ function ChatCta({
     <div className="flex flex-col gap-1.5">
       {blocked ? (
         <p className="text-xs text-danger">
-          You've blocked this creator, so chat access is unavailable. Unblock them from Settings
+          You&apos;ve blocked this creator, so chat access is unavailable. Unblock them from Settings
           to unlock chat again.
         </p>
       ) : renewalsDisabled ? (
@@ -219,7 +221,7 @@ function ChatCta({
       ) : (
         session && (
           <p className="text-xs text-text-secondary">
-            Your access ended. Renew for another 24 hours whenever you're ready.
+            Your access ended. Renew for another 24 hours whenever you&apos;re ready.
           </p>
         )
       )}

@@ -196,7 +196,7 @@ export default function DashboardPage() {
         {isCreator && (
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold">Trust &amp; Safety</h2>
-            <p className="text-xs text-text-muted">Informational only — reports and blocks aren't public.</p>
+            <p className="text-xs text-text-muted">Informational only — reports and blocks aren&apos;t public.</p>
             <div className="grid gap-4 sm:grid-cols-3">
               {trustMetrics.map((metric) => (
                 <DashboardCard key={metric.label} {...metric} />

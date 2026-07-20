@@ -63,7 +63,7 @@ export default function SafetyPage() {
               .
             </p>
             <p className="text-xs text-text-muted">
-              This is a demo product — reports and payment issues are recorded locally and aren't
+              This is a demo product — reports and payment issues are recorded locally and aren&apos;t
               reviewed by a real moderation team yet.
             </p>
           </CardContent>

@@ -66,7 +66,7 @@ export function BuyMediaModal({ session, mediaType, price, disabled, onPurchased
         </div>
 
         <p className="text-sm text-text-secondary">
-          This media is created and sent live during your active conversation — there's no
+          This media is created and sent live during your active conversation — there&apos;s no
           gallery or pre-uploaded content.
         </p>
 

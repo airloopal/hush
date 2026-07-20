@@ -197,7 +197,7 @@ export default function CreatorDetailsPage() {
             <p className="text-sm font-medium text-text-primary">Adult 18+ content confirmation</p>
             <p className="text-sm text-text-secondary">
               You selected the Adult 18+ category. Confirm you are 18 years or older and that your
-              content complies with Hush's lawful-adult creator policy.
+              content complies with Hush&apos;s lawful-adult creator policy.
             </p>
             <label className="flex items-start gap-2 text-sm text-text-primary">
               <input
