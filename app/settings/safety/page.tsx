@@ -8,13 +8,25 @@ import { BottomNav } from "@/components/bottom-nav";
 import { EmptyState } from "@/components/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { StatusBadge, type StatusKind } from "@/components/ui/status-badge";
 import { useToast } from "@/components/ui/use-toast";
 import { useRequireAccount } from "@/lib/use-account-guard";
 import { getBlockedCreatorsList, unblockCreator } from "@/lib/chat";
 import { getPaymentIssuesForFan, getReportsForFan } from "@/lib/trust";
 import { PAYMENT_ISSUE_TYPES, REPORT_REASONS } from "@/lib/trust-types";
-import type { BlockedCreator, PaymentIssue, Report } from "@/lib/trust-types";
+import type { BlockedCreator, PaymentIssue, PaymentIssueStatus, Report, ReportStatus } from "@/lib/trust-types";
+
+function reportStatusBadge(status: ReportStatus): StatusKind {
+  if (status === "resolved") return "completed";
+  if (status === "closed") return "draft";
+  return "pending";
+}
+
+function paymentIssueStatusBadge(status: PaymentIssueStatus): StatusKind {
+  if (status === "resolved") return "completed";
+  if (status === "pending-review") return "expiring";
+  return "pending";
+}
 
 export default function SafetyCentrePage() {
   const { ready, account } = useRequireAccount();
@@ -111,7 +123,10 @@ export default function SafetyCentrePage() {
                             @{report.creatorUsername} · {new Date(report.createdAt).toLocaleDateString()}
                           </span>
                         </div>
-                        <StatusBadge status="pending" />
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={reportStatusBadge(report.status)} />
+                          <span className="text-xs capitalize text-text-muted">{report.status}</span>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -140,7 +155,10 @@ export default function SafetyCentrePage() {
                             {issue.id} · {new Date(issue.createdAt).toLocaleDateString()}
                           </span>
                         </div>
-                        <StatusBadge status="pending" />
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={paymentIssueStatusBadge(issue.status)} />
+                          <span className="text-xs capitalize text-text-muted">{issue.status.replace("-", " ")}</span>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}

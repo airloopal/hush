@@ -8,6 +8,7 @@ import {
   CreditCard,
   Flag,
   MessageCircle,
+  Receipt,
   Timer,
   Trash2,
   Video,
@@ -36,6 +37,7 @@ const NOTIFICATION_ICONS: Record<NotificationType, LucideIcon> = {
   "chat-expired": Timer,
   "live-photo-fulfilled": Camera,
   "live-video-fulfilled": Video,
+  "purchase-completed": Receipt,
   "report-updated": Flag,
   "payment-issue-updated": CreditCard,
 };
