@@ -37,11 +37,13 @@ import {
   isSessionActive,
 } from "@/lib/chat";
 import { getCreatorTrustMetrics, getPaymentIssuesForCreator, getReportsForCreator } from "@/lib/trust";
+import { cn } from "@/lib/utils";
 import {
   getAverageResponseMinutes,
   getFanReturnRate,
   getMediaSoldCount,
   getMessagesSentToday,
+  getMonthlyEarnings,
   getWeeklyEarnings,
 } from "@/lib/creator-analytics";
 import type { ChatSession, MediaPurchase } from "@/lib/chat-types";
@@ -83,12 +85,14 @@ export default function DashboardPage() {
 
   const lifetimeEarnings = allSessions.reduce((sum, s) => sum + getSessionEarnings(s).total, 0);
   const todaysEarnings = isCreator ? getTodaysEarningsForCreator(account.username) : 0;
+  const monthlyEarnings = isCreator ? getMonthlyEarnings(account.username) : 0;
   const expiringTodayCount = activeSessions.filter(isExpiringToday).length;
 
   const overviewMetrics = [
     { label: "Active chats", value: String(activeSessions.length), icon: MessagesSquare, accent: "neutral" as const },
     { label: "Pending media requests", value: String(pendingRequests.length), icon: Camera, accent: "neutral" as const },
     { label: "Today's earnings", value: `$${todaysEarnings.toFixed(2)}`, icon: DollarSign, accent: "neutral" as const },
+    { label: "Monthly earnings", value: `$${monthlyEarnings.toFixed(2)}`, icon: TrendingUp, accent: "neutral" as const },
     { label: "Expiring today", value: String(expiringTodayCount), icon: Timer, accent: "amber" as const },
   ];
 
@@ -161,7 +165,7 @@ export default function DashboardPage() {
 
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold">Overview</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className={cn("grid gap-4 sm:grid-cols-2", isCreator ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
             {(isCreator ? overviewMetrics : fanPlaceholderMetrics).map((metric) => (
               <DashboardCard key={metric.label} {...metric} />
             ))}

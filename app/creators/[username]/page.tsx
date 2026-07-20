@@ -24,7 +24,7 @@ import { findCreatorByUsername } from "@/lib/discovery";
 import { MOCK_CREATORS } from "@/lib/creators";
 import { findActiveSession, findLatestSession, isCreatorBlocked } from "@/lib/chat";
 import { getPrivacySettings } from "@/lib/preferences";
-import { formatPresence } from "@/lib/utils";
+import { cn, formatPresence } from "@/lib/utils";
 import type { Account } from "@/lib/types";
 import type { ChatSession } from "@/lib/chat-types";
 
@@ -75,8 +75,17 @@ export default function CreatorProfilePage() {
 
   return (
     <ProfileShell account={account}>
-      <Card className="max-w-lg">
-        <CardHeader className="flex-row items-center gap-4">
+      <Card className="max-w-lg overflow-hidden">
+        <div
+          aria-hidden="true"
+          className={cn(
+            "h-20 w-full",
+            creator.bannerColor === "violet" && "bg-violet/15",
+            creator.bannerColor === "coral" && "bg-coral/15",
+            (!creator.bannerColor || creator.bannerColor === "emerald") && "bg-emerald/15"
+          )}
+        />
+        <CardHeader className="flex-row items-center gap-4 -mt-8">
           <Avatar src={creator.avatarUrl} alt={creator.username} size="xl" online={creator.isOnline} />
           <div className="flex flex-1 flex-col gap-1.5">
             <span className="text-xl font-semibold leading-tight">@{creator.username}</span>
