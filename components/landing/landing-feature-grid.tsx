@@ -35,7 +35,7 @@ export function LandingFeatureGrid() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map(({ icon: Icon, title, description }, index) => (
             <Reveal key={title} variant="fade" delay={index * 50}>
-              <Card className="h-full">
+              <Card className="h-full transition-[box-shadow,transform] duration-base ease-signal hover:-translate-y-0.5 hover:shadow-md">
                 <CardContent className="flex flex-col gap-3 p-5">
                   <span className="flex h-9 w-9 items-center justify-center rounded-md bg-emerald/10 text-emerald">
                     <Icon className="h-4 w-4" aria-hidden="true" />

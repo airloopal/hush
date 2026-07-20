@@ -34,7 +34,7 @@ export function LandingHowItWorks() {
         <div className="grid gap-5 sm:grid-cols-3">
           {STEPS.map(({ icon: Icon, title, description }, index) => (
             <Reveal key={title} variant="slide-up" delay={index * 100}>
-              <Card className="h-full">
+              <Card className="h-full transition-[box-shadow,transform] duration-base ease-signal hover:-translate-y-0.5 hover:shadow-md">
                 <CardContent className="flex flex-col gap-4 p-6">
                   <span className="flex h-11 w-11 items-center justify-center rounded-md bg-emerald/10 font-mono-data text-sm font-semibold text-emerald">
                     {index + 1}

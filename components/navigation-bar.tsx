@@ -63,7 +63,7 @@ export function NavigationBar({ items, activeHref, user, notificationCount, clas
 
   return (
     <>
-      <header className={cn("sticky top-0 z-40 w-full border-b border-border bg-background/90 backdrop-blur", className)}>
+      <header className={cn("sticky top-0 z-40 w-full border-b border-border glass", className)}>
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">

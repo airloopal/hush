@@ -36,7 +36,7 @@ export function DashboardCard({
   const isPositive = (delta ?? 0) >= 0;
 
   return (
-    <Card className={cn(className)}>
+    <Card className={cn("transition-shadow duration-base ease-signal hover:shadow-md", className)}>
       <CardHeader className="flex-row items-center justify-between pb-2">
         <span className="text-sm font-medium text-text-secondary">{label}</span>
         {Icon && (

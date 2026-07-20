@@ -51,6 +51,8 @@
     --shadow-sm: 0 1px 2px 0 rgb(20 20 28 / 0.06);
     --shadow-md: 0 4px 12px -2px rgb(20 20 28 / 0.1);
     --shadow-lg: 0 12px 32px -8px rgb(20 20 28 / 0.18);
+    --shadow-xl: 0 24px 64px -12px rgb(20 20 28 / 0.24);
+    --glass-bg: rgb(250 248 244 / 0.82);
 
     --motion-fast: 120ms;
     --motion-base: 200ms;
@@ -91,6 +93,8 @@
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
     --shadow-md: 0 4px 16px -2px rgb(0 0 0 / 0.4);
     --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.5);
+    --shadow-xl: 0 28px 72px -12px rgb(0 0 0 / 0.6);
+    --glass-bg: rgb(13 14 15 / 0.82);
   }
 }
 
@@ -116,6 +120,24 @@
     font-family: var(--font-geist-mono), ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.02em;
+  }
+
+  /* Formalized glass overlay treatment — sticky headers, floating bars.
+     Uses the surface color at partial opacity + blur rather than a new
+     token, so it always matches the current theme automatically. */
+  .glass {
+    background-color: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Ensures icon-only controls meet a comfortable minimum touch target on
+     touch devices, without changing their visual size on desktop. */
+  @media (pointer: coarse) {
+    .tap-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
   }
 
   :focus-visible {

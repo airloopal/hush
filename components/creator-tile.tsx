@@ -28,7 +28,7 @@ export function CreatorTile({ creator, className }: CreatorTileProps) {
     <Link href={`/creators/${creator.username}`} className="block">
       <Card
         className={cn(
-          "flex h-full flex-col overflow-hidden transition-shadow duration-base hover:shadow-md",
+          "flex h-full flex-col overflow-hidden transition-[box-shadow,transform,border-color] duration-base ease-signal hover:-translate-y-1 hover:border-emerald/30 hover:shadow-lg",
           className
         )}
       >
@@ -38,10 +38,10 @@ export function CreatorTile({ creator, className }: CreatorTileProps) {
             Sponsored
           </div>
         )}
-        <CardHeader className="flex-row items-center gap-3 pb-3">
-          <Avatar src={creator.avatarUrl} alt={creator.username} size="lg" online={creator.isOnline} />
-          <div className="flex flex-1 flex-col">
-            <span className="font-semibold leading-tight">@{creator.username}</span>
+        <CardHeader className="flex-row items-center gap-3.5 pb-3">
+          <Avatar src={creator.avatarUrl} alt={creator.username} size="xl" online={creator.isOnline} />
+          <div className="flex flex-1 flex-col gap-0.5">
+            <span className="font-semibold leading-tight tracking-tight">@{creator.username}</span>
             <span className="text-sm text-text-secondary">
               {formatPresence(creator.isOnline, creator.lastSeenMinutes)}
             </span>
@@ -61,11 +61,11 @@ export function CreatorTile({ creator, className }: CreatorTileProps) {
             {creator.category}
           </CategoryPill>
           <p className="line-clamp-2 text-sm text-text-secondary">{creator.bio}</p>
-          <div className="mt-auto flex items-center justify-between border-t border-border pt-3 text-sm">
+          <div className="mt-auto flex items-center justify-between border-t border-border pt-3">
             <ResponseTimeChip minutes={creator.averageReplyMinutes} />
-            <span className="font-mono-data font-semibold text-text-primary">
+            <span className="inline-flex items-center gap-1 rounded-pill bg-emerald/10 px-2.5 py-1 font-mono-data text-sm font-semibold text-emerald">
               ${creator.chatPrice}
-              <span className="text-text-muted"> /24h</span>
+              <span className="text-[11px] font-medium text-emerald/70">/24h</span>
             </span>
           </div>
         </CardContent>

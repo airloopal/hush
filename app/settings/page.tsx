@@ -39,17 +39,34 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-background pb-24 md:pb-0">
       <NavigationBar activeHref="/settings" user={{ name: account.username }} />
 
-      <main className="container flex max-w-2xl flex-col gap-6 py-10">
+      <main className="container flex max-w-2xl flex-col gap-8 py-10">
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
 
-        <ProfileSection account={account} onAccountChange={setAccount} />
-        <AppearanceSection />
-        <PrivacySection />
-        <ChatPreferencesSection />
-        <NotificationsSection />
-        {account.role === "fan" && <SafetySection />}
-        {account.role === "fan" && <PurchasesSection fanUsername={account.username} />}
-        {isDev && <DeveloperSection onReset={handleReset} />}
+        <div className="flex flex-col gap-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Account</h2>
+          <div className="flex flex-col gap-4">
+            <ProfileSection account={account} onAccountChange={setAccount} />
+            <AppearanceSection />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Preferences</h2>
+          <div className="flex flex-col gap-4">
+            <PrivacySection />
+            <ChatPreferencesSection />
+            <NotificationsSection />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-text-muted">More</h2>
+          <div className="flex flex-col gap-4">
+            {account.role === "fan" && <SafetySection />}
+            {account.role === "fan" && <PurchasesSection fanUsername={account.username} />}
+            {isDev && <DeveloperSection onReset={handleReset} />}
+          </div>
+        </div>
       </main>
 
       <BottomNav activeHref="/settings" />

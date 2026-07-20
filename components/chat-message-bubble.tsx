@@ -33,7 +33,7 @@ export function ChatMessageBubble({
     const { label, className } = getMediaStatusLabel(message.body);
     return (
       <div className={cn("flex justify-center", compact ? "py-0.5" : "py-1")}>
-        <div className="flex max-w-[85%] items-start gap-2 rounded-lg border border-border bg-surface-muted/60 px-3 py-2">
+        <div className="flex max-w-[85%] items-start gap-2 rounded-xl border border-border bg-surface-muted/60 px-3 py-2 shadow-sm">
           <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-text-muted" aria-hidden="true" />
           <div className="flex flex-col gap-1">
             <span className={cn("w-fit rounded-pill px-2 py-0.5 text-[10px] font-medium", className)}>
@@ -62,9 +62,11 @@ export function ChatMessageBubble({
     <div className={cn("flex flex-col gap-1", isOwn ? "items-end" : "items-start")}>
       <div
         className={cn(
-          "max-w-[75%] rounded-lg text-sm",
+          "max-w-[75%] text-sm leading-relaxed shadow-sm",
           compact ? "px-3 py-1.5" : "px-3.5 py-2.5",
-          isOwn ? "bg-emerald text-emerald-foreground" : "border border-border bg-surface-muted text-text-primary"
+          isOwn
+            ? "rounded-2xl rounded-br-md bg-emerald text-emerald-foreground"
+            : "rounded-2xl rounded-bl-md border border-border bg-surface-muted text-text-primary"
         )}
       >
         {message.body}

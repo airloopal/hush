@@ -91,7 +91,7 @@ export function Countdown({ target, className, variant = "default", onComplete }
           <React.Fragment key={unit.label}>
             <div
               className={cn(
-                "flex min-w-[3.25rem] flex-col items-center rounded-md border px-2.5 py-1.5",
+                "flex min-w-[3.25rem] flex-col items-center rounded-lg border px-2.5 py-1.5 shadow-sm",
                 remaining.complete
                   ? "border-border bg-surface-muted"
                   : isUrgent
