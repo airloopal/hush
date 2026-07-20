@@ -77,6 +77,26 @@ export function getWeeklyEarnings(creatorUsername: string): number {
   return total;
 }
 
+/** Same idea as getWeeklyEarnings, over a 30-day window. */
+export function getMonthlyEarnings(creatorUsername: string): number {
+  const now = Date.now();
+  const sessions = getAllSessionsForCreator(creatorUsername);
+  let total = 0;
+
+  for (const session of sessions) {
+    if (now - new Date(session.startedAt).getTime() <= 30 * DAY_MS) {
+      total += Number.parseFloat(session.chatPrice) || 0;
+    }
+    for (const purchase of getMediaPurchasesForSession(session.id)) {
+      if (now - new Date(purchase.requestedAt).getTime() <= 30 * DAY_MS) {
+        total += Number.parseFloat(purchase.price) || 0;
+      }
+    }
+  }
+
+  return total;
+}
+
 /** Share of fans who have unlocked more than one session with this
  * creator. Returns null if there isn't enough data yet. */
 export function getFanReturnRate(creatorUsername: string): number | null {

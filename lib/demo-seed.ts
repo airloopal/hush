@@ -301,7 +301,7 @@ export function seedDemoDataIfNeeded(): void {
     now
   );
   const sInes = buildSession(
-    { id: "demo-s-ines", creatorUsername: "inescarvalho", fanUsername: FAN_USERNAME, startedHoursAgo: 22, txn: 3 },
+    { id: "demo-s-ines", creatorUsername: "inescarvalho", fanUsername: FAN_USERNAME, startedHoursAgo: 23.33, txn: 3 },
     now
   );
   const sPixel = buildSession(
