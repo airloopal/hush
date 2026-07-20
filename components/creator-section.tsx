@@ -10,6 +10,7 @@ export interface CreatorSectionProps {
   description?: string;
   creators: MockCreator[];
   emptyMessage: string;
+  emptyAction?: React.ReactNode;
   /** "row" scrolls horizontally on mobile; "grid" wraps into a full grid. */
   layout?: "row" | "grid";
 }
@@ -19,6 +20,7 @@ export function CreatorSection({
   description,
   creators,
   emptyMessage,
+  emptyAction,
   layout = "row",
 }: CreatorSectionProps) {
   return (
@@ -29,7 +31,7 @@ export function CreatorSection({
       </div>
 
       {creators.length === 0 ? (
-        <EmptyState icon={Users} title={emptyMessage} />
+        <EmptyState icon={Users} title={emptyMessage} action={emptyAction} />
       ) : layout === "row" ? (
         <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2">
           {creators.map((creator) => (

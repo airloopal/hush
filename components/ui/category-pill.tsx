@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const categoryPillVariants = cva(
-  "inline-flex items-center gap-1 rounded-pill px-3 py-1 text-xs font-medium transition-colors duration-fast ease-signal",
+  "inline-flex items-center gap-1 rounded-pill px-3 py-1 text-xs font-medium transition-[background-color,color,transform] duration-fast ease-signal",
   {
     variants: {
       // amber = warnings / urgent / expiring-soon tags only.
@@ -18,9 +18,10 @@ const categoryPillVariants = cva(
         false: "",
       },
       // Selection is always shown with the primary interactive color
-      // (emerald), regardless of the pill's base variant.
+      // (emerald), regardless of the pill's base variant, plus a subtle
+      // scale-up so the change reads as a deliberate, smooth selection.
       selected: {
-        true: "bg-emerald/15 text-emerald ring-1 ring-inset ring-emerald/40",
+        true: "scale-105 bg-emerald/15 text-emerald ring-1 ring-inset ring-emerald/40",
         false: "",
       },
     },

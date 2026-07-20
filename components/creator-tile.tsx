@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { CategoryPill } from "@/components/ui/category-pill";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ResponseTimeChip } from "@/components/response-time-chip";
+import { FavoriteButton } from "@/components/favorite-button";
 import { isCreatorBlocked } from "@/lib/chat";
 import type { MockCreator } from "@/lib/types";
 import { cn, formatPresence } from "@/lib/utils";
@@ -19,16 +20,25 @@ export interface CreatorTileProps {
 const isSponsored = (creator: MockCreator) =>
   !!creator.boostEndsAt && new Date(creator.boostEndsAt).getTime() > Date.now();
 
-/** Compact marketplace card for Discover — links to the full profile. */
+/** Compact marketplace card for Discover — links to the full profile.
+ * The favourite button must not be a descendant of the profile link (a
+ * <button> inside an <a> is invalid HTML and breaks keyboard/AT behavior),
+ * so the link is a full-cover overlay and the visible card is
+ * pointer-events-none, with group-hover driving its hover styling. */
 export function CreatorTile({ creator, className }: CreatorTileProps) {
   const sponsored = isSponsored(creator);
   const blocked = isCreatorBlocked(creator.username);
 
   return (
-    <Link href={`/creators/${creator.username}`} className="block">
+    <div className="group relative h-full">
+      <Link
+        href={`/creators/${creator.username}`}
+        aria-label={`View @${creator.username}'s profile`}
+        className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      />
       <Card
         className={cn(
-          "flex h-full flex-col overflow-hidden transition-[box-shadow,transform,border-color] duration-base ease-signal hover:-translate-y-1 hover:border-emerald/30 hover:shadow-lg",
+          "pointer-events-none relative z-[1] flex h-full flex-col overflow-hidden transition-[box-shadow,transform,border-color] duration-base ease-signal group-hover:-translate-y-1 group-hover:border-emerald/30 group-hover:shadow-lg",
           className
         )}
       >
@@ -70,6 +80,11 @@ export function CreatorTile({ creator, className }: CreatorTileProps) {
           </div>
         </CardContent>
       </Card>
-    </Link>
+      <FavoriteButton
+        username={creator.username}
+        size="sm"
+        className="pointer-events-auto absolute right-3 top-3 z-[2]"
+      />
+    </div>
   );
 }

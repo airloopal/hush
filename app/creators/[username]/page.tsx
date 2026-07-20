@@ -17,7 +17,10 @@ import { UnlockChatModal } from "@/components/unlock-chat-modal";
 import { Countdown } from "@/components/countdown";
 import { CreatorStatsRow } from "@/components/creator-stats-row";
 import { CreatorReviews } from "@/components/creator-reviews";
+import { CreatorSocialProof } from "@/components/creator-social-proof";
 import { ResponseTimeChip } from "@/components/response-time-chip";
+import { FavoriteButton } from "@/components/favorite-button";
+import { Reveal } from "@/components/landing/reveal";
 import { useRequireAccount } from "@/lib/use-account-guard";
 import { hasAdultAccess } from "@/lib/account";
 import { findCreatorByUsername } from "@/lib/discovery";
@@ -75,16 +78,21 @@ export default function CreatorProfilePage() {
 
   return (
     <ProfileShell account={account}>
-      <Card className="max-w-lg overflow-hidden">
+      <Reveal variant="scale" className="max-w-lg">
+      <Card className="overflow-hidden">
         <div
           aria-hidden="true"
           className={cn(
-            "h-20 w-full",
+            "relative h-20 w-full",
             creator.bannerColor === "violet" && "bg-violet/15",
             creator.bannerColor === "coral" && "bg-coral/15",
             (!creator.bannerColor || creator.bannerColor === "emerald") && "bg-emerald/15"
           )}
-        />
+        >
+          {account.role === "fan" && (
+            <FavoriteButton username={creator.username} className="absolute right-3 top-3" />
+          )}
+        </div>
         <CardHeader className="flex-row items-center gap-4 -mt-8">
           <Avatar src={creator.avatarUrl} alt={creator.username} size="xl" online={creator.isOnline} />
           <div className="flex flex-1 flex-col gap-1.5">
@@ -133,6 +141,7 @@ export default function CreatorProfilePage() {
           </p>
 
           <CreatorStatsRow creator={creator} />
+          <CreatorSocialProof creator={creator} />
 
           {account.role === "fan" ? (
             <ChatCta creator={creator} fanUsername={account.username} router={router} />
@@ -143,6 +152,7 @@ export default function CreatorProfilePage() {
           )}
         </CardContent>
       </Card>
+      </Reveal>
 
       <div className="max-w-lg">
         <CreatorReviews />
