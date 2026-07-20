@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { CategoryPill } from "@/components/ui/category-pill";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { ResponseTimeChip } from "@/components/response-time-chip";
 import { isCreatorBlocked } from "@/lib/chat";
 import type { MockCreator } from "@/lib/types";
 import { cn, formatPresence } from "@/lib/utils";
@@ -61,7 +62,7 @@ export function CreatorTile({ creator, className }: CreatorTileProps) {
           </CategoryPill>
           <p className="line-clamp-2 text-sm text-text-secondary">{creator.bio}</p>
           <div className="mt-auto flex items-center justify-between border-t border-border pt-3 text-sm">
-            <span className="text-text-muted">Avg reply ~{creator.averageReplyMinutes}m</span>
+            <ResponseTimeChip minutes={creator.averageReplyMinutes} />
             <span className="font-mono-data font-semibold text-text-primary">
               ${creator.chatPrice}
               <span className="text-text-muted"> /24h</span>

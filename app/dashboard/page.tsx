@@ -1,7 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { Camera, DollarSign, FileWarning, MessagesSquare, Receipt, Timer, UserX } from "lucide-react";
+import Link from "next/link";
+import {
+  Camera,
+  DollarSign,
+  FileWarning,
+  MessageSquareText,
+  MessagesSquare,
+  Receipt,
+  Repeat,
+  Timer,
+  TrendingUp,
+  UserX,
+} from "lucide-react";
 
 import { NavigationBar } from "@/components/navigation-bar";
 import { BottomNav } from "@/components/bottom-nav";
@@ -9,6 +21,8 @@ import { DashboardCard } from "@/components/dashboard-card";
 import { EmptyState } from "@/components/empty-state";
 import { DashboardConversationRow } from "@/components/dashboard-conversation-row";
 import { MediaRequestCard } from "@/components/media-request-card";
+import { DemoDataBadge } from "@/components/demo-data-badge";
+import { Button } from "@/components/ui/button";
 import { CategoryPill } from "@/components/ui/category-pill";
 import { Avatar } from "@/components/ui/avatar";
 import { useRequireRole } from "@/lib/use-account-guard";
@@ -23,6 +37,13 @@ import {
   isSessionActive,
 } from "@/lib/chat";
 import { getCreatorTrustMetrics, getPaymentIssuesForCreator, getReportsForCreator } from "@/lib/trust";
+import {
+  getAverageResponseMinutes,
+  getFanReturnRate,
+  getMediaSoldCount,
+  getMessagesSentToday,
+  getWeeklyEarnings,
+} from "@/lib/creator-analytics";
 import type { ChatSession, MediaPurchase } from "@/lib/chat-types";
 
 // Fan-side dashboard has no real chat data yet — same static placeholders
@@ -83,6 +104,30 @@ export default function DashboardPage() {
     { label: "Blocked Users", value: String(blockedUsersCount), icon: UserX, accent: "neutral" as const },
   ];
 
+  const messagesToday = isCreator ? getMessagesSentToday(account.username) : 0;
+  const mediaSold = isCreator ? getMediaSoldCount(account.username) : 0;
+  const avgResponse = isCreator ? getAverageResponseMinutes(account.username) : null;
+  const weeklyEarnings = isCreator ? getWeeklyEarnings(account.username) : 0;
+  const fanReturnRate = isCreator ? getFanReturnRate(account.username) : null;
+
+  const analyticsMetrics = [
+    { label: "Messages today", value: String(messagesToday), icon: MessageSquareText, accent: "neutral" as const },
+    { label: "Media sold", value: String(mediaSold), icon: Camera, accent: "neutral" as const },
+    {
+      label: "Average response",
+      value: avgResponse !== null ? `${avgResponse}m` : "—",
+      icon: Timer,
+      accent: "neutral" as const,
+    },
+    { label: "Weekly earnings", value: `$${weeklyEarnings.toFixed(2)}`, icon: TrendingUp, accent: "neutral" as const },
+    {
+      label: "Fan return rate",
+      value: fanReturnRate !== null ? `${Math.round(fanReturnRate * 100)}%` : "—",
+      icon: Repeat,
+      accent: "neutral" as const,
+    },
+  ];
+
   function handleRequestResolved() {
     setVersion((v) => v + 1);
   }
@@ -129,6 +174,20 @@ export default function DashboardPage() {
             />
           )}
         </section>
+
+        {isCreator && (
+          <section className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold">Analytics</h2>
+              <DemoDataBadge />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              {analyticsMetrics.map((metric) => (
+                <DashboardCard key={metric.label} {...metric} />
+              ))}
+            </div>
+          </section>
+        )}
 
         {isCreator && (
           <section className="flex flex-col gap-3">
@@ -196,6 +255,11 @@ export default function DashboardPage() {
               icon={MessagesSquare}
               title="No active conversations yet"
               description="Conversations will appear here once you unlock 24-hour chat access with a creator. Manage your own chats from the Chats tab."
+              action={
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/discover">Browse creators</Link>
+                </Button>
+              }
             />
           ) : allSessions.length === 0 ? (
             <EmptyState

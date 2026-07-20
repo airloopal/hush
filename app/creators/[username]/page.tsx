@@ -15,6 +15,9 @@ import { CategoryPill } from "@/components/ui/category-pill";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { UnlockChatModal } from "@/components/unlock-chat-modal";
 import { Countdown } from "@/components/countdown";
+import { CreatorStatsRow } from "@/components/creator-stats-row";
+import { CreatorReviews } from "@/components/creator-reviews";
+import { ResponseTimeChip } from "@/components/response-time-chip";
 import { useRequireAccount } from "@/lib/use-account-guard";
 import { hasAdultAccess } from "@/lib/account";
 import { findCreatorByUsername } from "@/lib/discovery";
@@ -90,9 +93,7 @@ export default function CreatorProfilePage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
           <p className="text-sm text-text-secondary">{creator.bio}</p>
-          <p className="text-sm text-text-muted">
-            Average reply time: <span className="text-text-primary">~{creator.averageReplyMinutes}m</span>
-          </p>
+          <ResponseTimeChip minutes={creator.averageReplyMinutes} />
 
           <div className="flex flex-col divide-y divide-border rounded-md border border-border">
             <div className="flex items-center justify-between p-3">
@@ -122,6 +123,8 @@ export default function CreatorProfilePage() {
             are optional add-ons you can request from within the conversation.
           </p>
 
+          <CreatorStatsRow creator={creator} />
+
           {account.role === "fan" ? (
             <ChatCta creator={creator} fanUsername={account.username} router={router} />
           ) : (
@@ -131,6 +134,10 @@ export default function CreatorProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      <div className="max-w-lg">
+        <CreatorReviews />
+      </div>
     </ProfileShell>
   );
 }

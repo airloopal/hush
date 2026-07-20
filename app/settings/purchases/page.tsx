@@ -8,6 +8,8 @@ import { BottomNav } from "@/components/bottom-nav";
 import { DashboardCard } from "@/components/dashboard-card";
 import { EmptyState } from "@/components/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { useRequireAccount } from "@/lib/use-account-guard";
 import { getPurchaseHistoryForFan, groupPurchasesByMonth, summarizePurchases } from "@/lib/purchases";
 import type { PurchaseRecord } from "@/lib/purchases";
@@ -59,6 +61,11 @@ export default function PurchaseHistoryPage() {
           icon={Receipt}
           title="No purchases yet"
           description="Chat unlocks and live media purchases will show up here once you make one."
+          action={
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/discover">Browse creators</Link>
+            </Button>
+          }
         />
       ) : (
         <div className="flex flex-col gap-6">

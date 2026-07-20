@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { MessagesSquare } from "lucide-react";
 
 import { NavigationBar } from "@/components/navigation-bar";
 import { BottomNav } from "@/components/bottom-nav";
 import { EmptyState } from "@/components/empty-state";
 import { ChatListItem } from "@/components/chat-list-item";
+import { Button } from "@/components/ui/button";
 import { useRequireRole } from "@/lib/use-account-guard";
 import { getAllSessionsForFan, getLastMessage, isConversationUnreadForFan, sortFanChatSessions } from "@/lib/chat";
 import { MOCK_CREATORS } from "@/lib/creators";
@@ -44,6 +46,11 @@ export default function ChatsPage() {
             icon={MessagesSquare}
             title="No conversations yet"
             description="Unlock a creator's chat access from their profile in Discover to start a conversation."
+            action={
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/discover">Browse creators</Link>
+              </Button>
+            }
           />
         ) : (
           <div className="flex flex-col gap-2">
