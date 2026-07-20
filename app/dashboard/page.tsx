@@ -11,7 +11,7 @@ import { DashboardConversationRow } from "@/components/dashboard-conversation-ro
 import { MediaRequestCard } from "@/components/media-request-card";
 import { CategoryPill } from "@/components/ui/category-pill";
 import { Avatar } from "@/components/ui/avatar";
-import { useRequireAccount } from "@/lib/use-account-guard";
+import { useRequireRole } from "@/lib/use-account-guard";
 import {
   getAllSessionsForCreator,
   getLastMessage,
@@ -35,7 +35,7 @@ const fanPlaceholderMetrics = [
 type SortMode = "expiring" | "recent" | "spending";
 
 export default function DashboardPage() {
-  const { ready, account } = useRequireAccount();
+  const { ready, account } = useRequireRole("creator");
   const [sortMode, setSortMode] = React.useState<SortMode>("expiring");
   const [allSessions, setAllSessions] = React.useState<ChatSession[]>([]);
   const [pendingRequests, setPendingRequests] = React.useState<MediaPurchase[]>([]);

@@ -7,14 +7,14 @@ import { NavigationBar } from "@/components/navigation-bar";
 import { BottomNav } from "@/components/bottom-nav";
 import { EmptyState } from "@/components/empty-state";
 import { ChatListItem } from "@/components/chat-list-item";
-import { useRequireAccount } from "@/lib/use-account-guard";
+import { useRequireRole } from "@/lib/use-account-guard";
 import { getAllSessionsForFan, getLastMessage, isConversationUnreadForFan, sortFanChatSessions } from "@/lib/chat";
 import { MOCK_CREATORS } from "@/lib/creators";
 import { findCreatorByUsername } from "@/lib/discovery";
 import type { ChatSession } from "@/lib/chat-types";
 
 export default function ChatsPage() {
-  const { ready, account } = useRequireAccount();
+  const { ready, account } = useRequireRole("fan");
   const [sessions, setSessions] = React.useState<ChatSession[] | null>(null);
 
   React.useEffect(() => {

@@ -6,7 +6,7 @@ import { NavigationBar } from "@/components/navigation-bar";
 import { BottomNav } from "@/components/bottom-nav";
 import { DiscoverFilters } from "@/components/discover-filters";
 import { CreatorSection } from "@/components/creator-section";
-import { useRequireAccount } from "@/lib/use-account-guard";
+import { useRequireRole } from "@/lib/use-account-guard";
 import { hasAdultAccess } from "@/lib/account";
 import { MOCK_CREATORS } from "@/lib/creators";
 import { readDiscoverFilters, writeDiscoverFilters } from "@/lib/discover-session";
@@ -25,7 +25,7 @@ import {
 } from "@/lib/discovery";
 
 export default function DiscoverPage() {
-  const { ready, account } = useRequireAccount();
+  const { ready, account } = useRequireRole("fan");
   const [search, setSearch] = React.useState("");
   const [category, setCategory] = React.useState<CategoryFilter>("All");
   const [restored, setRestored] = React.useState(false);
