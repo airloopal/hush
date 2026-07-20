@@ -12,6 +12,7 @@ export type NotificationType =
   | "chat-expired"
   | "live-photo-fulfilled"
   | "live-video-fulfilled"
+  | "purchase-completed"
   | "report-updated"
   | "payment-issue-updated";
 

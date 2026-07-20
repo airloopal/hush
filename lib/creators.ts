@@ -33,6 +33,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     isNew: false,
     boostEndsAt: hoursFromNow(18),
     isAdult: false,
+    followers: 8400,
+    conversationCount: 612,
+    bannerColor: "emerald",
   },
   {
     id: "c02",
@@ -48,6 +51,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     joinedAt: daysAgo(6),
     isNew: true,
     isAdult: false,
+    followers: 340,
+    conversationCount: 28,
+    bannerColor: "violet",
   },
   {
     id: "c03",
@@ -64,6 +70,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     isNew: false,
     boostEndsAt: hoursFromNow(4),
     isAdult: false,
+    followers: 6100,
+    conversationCount: 455,
+    bannerColor: "coral",
   },
   {
     id: "c04",
@@ -79,6 +88,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     joinedAt: daysAgo(120),
     isNew: false,
     isAdult: false,
+    followers: 2900,
+    conversationCount: 201,
+    bannerColor: "emerald",
   },
   {
     id: "c05",
@@ -94,6 +106,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     joinedAt: daysAgo(540),
     isNew: false,
     isAdult: false,
+    followers: 11200,
+    conversationCount: 890,
+    bannerColor: "violet",
   },
   {
     id: "c06",
@@ -109,6 +124,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     joinedAt: daysAgo(4),
     isNew: true,
     isAdult: false,
+    followers: 210,
+    conversationCount: 15,
+    bannerColor: "coral",
   },
   {
     id: "c07",
@@ -125,6 +143,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     isNew: false,
     boostEndsAt: hoursFromNow(30),
     isAdult: false,
+    followers: 5400,
+    conversationCount: 388,
+    bannerColor: "emerald",
   },
   {
     id: "c08",
@@ -140,6 +161,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     joinedAt: daysAgo(95),
     isNew: false,
     isAdult: false,
+    followers: 1800,
+    conversationCount: 132,
+    bannerColor: "violet",
   },
   {
     id: "c09",
@@ -155,6 +179,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     joinedAt: daysAgo(430),
     isNew: false,
     isAdult: false,
+    followers: 3200,
+    conversationCount: 240,
+    bannerColor: "coral",
   },
   {
     id: "c10",
@@ -170,6 +197,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     joinedAt: daysAgo(8),
     isNew: true,
     isAdult: false,
+    followers: 560,
+    conversationCount: 41,
+    bannerColor: "emerald",
   },
   {
     id: "c11",
@@ -185,6 +215,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     joinedAt: daysAgo(260),
     isNew: false,
     isAdult: false,
+    followers: 7300,
+    conversationCount: 520,
+    bannerColor: "violet",
   },
   {
     id: "c12",
@@ -200,6 +233,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     joinedAt: daysAgo(2),
     isNew: true,
     isAdult: false,
+    followers: 180,
+    conversationCount: 9,
+    bannerColor: "coral",
   },
   {
     id: "c13",
@@ -215,6 +251,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     joinedAt: daysAgo(150),
     isNew: false,
     isAdult: false,
+    followers: 2400,
+    conversationCount: 175,
+    bannerColor: "emerald",
   },
   {
     id: "c14",
@@ -230,6 +269,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     joinedAt: daysAgo(320),
     isNew: false,
     isAdult: false,
+    followers: 4600,
+    conversationCount: 330,
+    bannerColor: "violet",
   },
   {
     id: "c15",
@@ -245,6 +287,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     joinedAt: daysAgo(10),
     isNew: true,
     isAdult: false,
+    followers: 410,
+    conversationCount: 33,
+    bannerColor: "coral",
   },
   {
     id: "c16",
@@ -261,6 +306,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     isNew: false,
     boostEndsAt: hoursFromNow(2),
     isAdult: false,
+    followers: 3900,
+    conversationCount: 265,
+    bannerColor: "emerald",
   },
   {
     id: "c17",
@@ -276,6 +324,9 @@ export const MOCK_CREATORS: MockCreator[] = [
     joinedAt: daysAgo(190),
     isNew: false,
     isAdult: false,
+    followers: 2700,
+    conversationCount: 198,
+    bannerColor: "violet",
   },
   {
     id: "c18",
@@ -292,5 +343,8 @@ export const MOCK_CREATORS: MockCreator[] = [
     isNew: false,
     boostEndsAt: hoursFromNow(10),
     isAdult: true,
+    followers: 9800,
+    conversationCount: 710,
+    bannerColor: "coral",
   },
 ];

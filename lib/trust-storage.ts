@@ -34,7 +34,7 @@ function isValidReport(value: unknown): value is Report {
     REPORT_REASON_VALUES.includes(r.reason) &&
     (r.notes === undefined || typeof r.notes === "string") &&
     isValidIsoDate(r.createdAt) &&
-    r.status === "open"
+    (r.status === "open" || r.status === "resolved" || r.status === "closed")
   );
 }
 
@@ -49,7 +49,7 @@ function isValidPaymentIssue(value: unknown): value is PaymentIssue {
     typeof p.type === "string" &&
     PAYMENT_ISSUE_TYPE_VALUES.includes(p.type) &&
     isValidIsoDate(p.createdAt) &&
-    p.status === "open"
+    (p.status === "open" || p.status === "pending-review" || p.status === "resolved")
   );
 }
 

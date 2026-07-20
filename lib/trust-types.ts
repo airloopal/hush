@@ -20,7 +20,7 @@ export const REPORT_REASONS: { value: ReportReason; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
-export type ReportStatus = "open";
+export type ReportStatus = "open" | "resolved" | "closed";
 
 export interface Report {
   id: string;
@@ -46,7 +46,7 @@ export const PAYMENT_ISSUE_TYPES: { value: PaymentIssueType; label: string }[] =
   { value: "other", label: "Other" },
 ];
 
-export type PaymentIssueStatus = "open";
+export type PaymentIssueStatus = "open" | "pending-review" | "resolved";
 
 export interface PaymentIssue {
   id: string;

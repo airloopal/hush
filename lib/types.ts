@@ -92,4 +92,13 @@ export interface MockCreator {
   /** ISO timestamp; a sponsored boost is active while this is in the future. */
   boostEndsAt?: string;
   isAdult: boolean;
+  /** Demo follower count. Optional/additive — no current UI renders this
+   * yet, but it's here so a real profile page can show it without a data
+   * model change later. */
+  followers?: number;
+  /** Demo lifetime conversation count, same rationale as `followers`. */
+  conversationCount?: number;
+  /** Token name (not a hex/image) reserved for a future profile banner
+   * treatment — this prototype has no photographic banner assets. */
+  bannerColor?: string;
 }

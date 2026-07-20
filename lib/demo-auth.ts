@@ -1,6 +1,7 @@
 import { readDemoSessionRaw, removeDemoSessionRaw, writeDemoSessionRaw } from "@/lib/demo-session-storage";
 import { getAccount, saveAccount } from "@/lib/account";
 import { removeStorage, STORAGE_KEYS } from "@/lib/storage";
+import { seedDemoDataIfNeeded } from "@/lib/demo-seed";
 import type { DemoUser } from "@/lib/demo-auth-types";
 import type { Account, CreatorAccount, FanAccount } from "@/lib/types";
 import type { Category } from "@/lib/categories";
@@ -30,7 +31,7 @@ function syncLegacyAccountFromDemoUser(user: DemoUser): void {
       ? ({
           role: "fan",
           username: user.username,
-          interests: ["Gaming", "Music", "Fitness", "Lifestyle"],
+          interests: ["Music", "Fitness", "Lifestyle", "Fashion"],
           adultConfirmed: false,
           createdAt: user.createdAt,
         } satisfies FanAccount)
@@ -61,6 +62,7 @@ export function getSession(): DemoUser | null {
 export function setSession(user: DemoUser): void {
   writeDemoSessionRaw(user);
   syncLegacyAccountFromDemoUser(user);
+  seedDemoDataIfNeeded();
 }
 
 /** Clears the demo session and the synced legacy account, but never touches
