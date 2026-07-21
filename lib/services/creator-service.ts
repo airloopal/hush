@@ -1,16 +1,17 @@
 import type { CreatorRepository } from "@/lib/repositories/creator-repository";
-import type { MockCreator } from "@/lib/types";
+import type { DiscoverCreator } from "@/lib/discover-types";
 
-/** Placeholder service boundary — Phase 2.1A foundation only. See
- * lib/services/profile-service.ts for the pattern this follows. */
+/** Placeholder service boundary — see lib/services/profile-service.ts for
+ * the pattern this follows. Method names track the repository's
+ * Launch-Sprint-L2 interface (lib/repositories/creator-repository.ts). */
 export class CreatorService {
   constructor(private readonly creators: CreatorRepository) {}
 
-  async listCreators(): Promise<MockCreator[]> {
-    return this.creators.list();
+  async listApprovedCreators(): Promise<DiscoverCreator[]> {
+    return this.creators.getApprovedCreators();
   }
 
-  async getCreator(username: string): Promise<MockCreator | null> {
-    return this.creators.getByUsername(username);
+  async getCreator(username: string): Promise<DiscoverCreator | null> {
+    return this.creators.getCreatorByUsername(username);
   }
 }

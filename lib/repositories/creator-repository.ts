@@ -1,7 +1,6 @@
-import type { MockCreator } from "@/lib/types";
 import type { Database } from "@/lib/supabase/database.types";
+import type { DiscoverCreator } from "@/lib/discover-types";
 
-type PublicCreatorRow = Database["public"]["Views"]["public_creator_profiles"]["Row"];
 type CreatorProfileRow = Database["public"]["Tables"]["creator_profiles"]["Row"];
 type CreatorProfileEditableFields = Pick<
   CreatorProfileRow,
@@ -16,29 +15,37 @@ type CreatorProfileEditableFields = Pick<
 >;
 type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
 
+export type CreatorSortOrder = "featured" | "newest" | "most_popular";
+
+export interface GetApprovedCreatorsOptions {
+  category?: string;
+  availableOnly?: boolean;
+  sort?: CreatorSortOrder;
+  limit?: number;
+}
+
 /**
- * Placeholder repository interface — Phase 2.1A/2.1B foundation only.
- * list/getByUsername are the original Phase 2.1A methods (demo-era
- * MockCreator shape). Everything else is new in Phase 2.1B, typed against
- * the real schema/views — see lib/repositories/profile-repository.ts for
- * the same split rationale.
+ * Fully implemented — Launch Sprint L2. Both the demo (lib/repositories/demo/)
+ * and Supabase (lib/repositories/supabase/) implementations return
+ * `DiscoverCreator[]`/`DiscoverCreator | null` so Discover and the creator
+ * profile page render identically regardless of which mode produced the
+ * data (see lib/discover-types.ts).
+ *
+ * getOwnCreatorProfile/updateOwnCreatorProfile remain separate — they
+ * operate on the creator's own row (any status, full field set) for
+ * self-service editing, not the public discovery surface.
  */
 export interface CreatorRepository {
-  list(): Promise<MockCreator[]>;
-  getByUsername(username: string): Promise<MockCreator | null>;
-
-  /** Approved + active creators only — backed by public.public_creator_profiles. */
-  getPublicCreators(): Promise<PublicCreatorRow[]>;
-  getPublicCreatorByUsername(username: string): Promise<PublicCreatorRow | null>;
-
-  /** A creator viewing/editing their own record, any status (draft included). */
-  getOwnCreatorProfile(userId: string): Promise<CreatorProfileRow | null>;
-  /** Approval fields, status, and aggregate/financial stats are never accepted here — enforced server-side by protect_creator_profile_admin_fields regardless. */
-  updateOwnCreatorProfile(userId: string, fields: Partial<CreatorProfileEditableFields>): Promise<CreatorProfileRow>;
-
+  getApprovedCreators(options?: GetApprovedCreatorsOptions): Promise<DiscoverCreator[]>;
+  getCreatorByUsername(username: string): Promise<DiscoverCreator | null>;
+  searchCreators(query: string): Promise<DiscoverCreator[]>;
+  getFeaturedCreators(limit?: number): Promise<DiscoverCreator[]>;
   getCategories(): Promise<CategoryRow[]>;
 
-  getFavourites(fanId: string): Promise<string[]>;
-  addFavourite(fanId: string, creatorId: string): Promise<void>;
-  removeFavourite(fanId: string, creatorId: string): Promise<void>;
+  getFavouriteCreators(fanId: string): Promise<string[]>;
+  favouriteCreator(fanId: string, creatorId: string): Promise<void>;
+  unfavouriteCreator(fanId: string, creatorId: string): Promise<void>;
+
+  getOwnCreatorProfile(userId: string): Promise<CreatorProfileRow | null>;
+  updateOwnCreatorProfile(userId: string, fields: Partial<CreatorProfileEditableFields>): Promise<CreatorProfileRow>;
 }

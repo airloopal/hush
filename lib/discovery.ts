@@ -1,32 +1,32 @@
 import { CATEGORIES, SAFE_CATEGORIES, type Category } from "@/lib/categories";
-import type { MockCreator } from "@/lib/types";
+import type { DiscoverCreator } from "@/lib/discover-types";
 
 export type CategoryFilter = Category | "All";
 
 /** Adult creators are removed entirely unless the viewer has adult access. */
 export function filterByAdultAccess(
-  creators: MockCreator[],
+  creators: DiscoverCreator[],
   hasAdultAccess: boolean
-): MockCreator[] {
+): DiscoverCreator[] {
   return hasAdultAccess ? creators : creators.filter((creator) => !creator.isAdult);
 }
 
-export function searchByUsername(creators: MockCreator[], query: string): MockCreator[] {
+export function searchByUsername(creators: DiscoverCreator[], query: string): DiscoverCreator[] {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return creators;
   return creators.filter((creator) => creator.username.toLowerCase().includes(normalized));
 }
 
 export function filterByCategory(
-  creators: MockCreator[],
+  creators: DiscoverCreator[],
   category: CategoryFilter
-): MockCreator[] {
+): DiscoverCreator[] {
   if (category === "All") return creators;
   return creators.filter((creator) => creator.category === category);
 }
 
 /** Online first, then lowest lastSeenMinutes (most recently active). */
-export function sortRecentlyActive(creators: MockCreator[]): MockCreator[] {
+export function sortRecentlyActive(creators: DiscoverCreator[]): DiscoverCreator[] {
   return [...creators].sort((a, b) => {
     if (a.isOnline !== b.isOnline) return a.isOnline ? -1 : 1;
     return a.lastSeenMinutes - b.lastSeenMinutes;
@@ -34,7 +34,7 @@ export function sortRecentlyActive(creators: MockCreator[]): MockCreator[] {
 }
 
 /** Online first, then recent activity, then username A→Z. */
-export function sortAllCreators(creators: MockCreator[]): MockCreator[] {
+export function sortAllCreators(creators: DiscoverCreator[]): DiscoverCreator[] {
   return [...creators].sort((a, b) => {
     if (a.isOnline !== b.isOnline) return a.isOnline ? -1 : 1;
     if (a.lastSeenMinutes !== b.lastSeenMinutes) return a.lastSeenMinutes - b.lastSeenMinutes;
@@ -42,14 +42,14 @@ export function sortAllCreators(creators: MockCreator[]): MockCreator[] {
   });
 }
 
-export function getSponsoredCreators(creators: MockCreator[]): MockCreator[] {
+export function getSponsoredCreators(creators: DiscoverCreator[]): DiscoverCreator[] {
   const now = Date.now();
   return creators.filter(
     (creator) => creator.boostEndsAt && new Date(creator.boostEndsAt).getTime() > now
   );
 }
 
-export function getNewCreators(creators: MockCreator[]): MockCreator[] {
+export function getNewCreators(creators: DiscoverCreator[]): DiscoverCreator[] {
   return creators.filter((creator) => creator.isNew);
 }
 
@@ -59,21 +59,21 @@ export function visibleCategories(hasAdultAccess: boolean): Category[] {
 }
 
 export function findCreatorByUsername(
-  creators: MockCreator[],
+  creators: DiscoverCreator[],
   username: string
-): MockCreator | undefined {
+): DiscoverCreator | undefined {
   return creators.find((creator) => creator.username === username);
 }
 
 // ---------------------------------------------------------------------------
-// Featured collections (Sprint 5A.4) — all derived from existing MockCreator
+// Featured collections (Sprint 5A.4) — all derived from existing DiscoverCreator
 // fields, no new storage. "Demo" collections use a plausible-but-synthetic
 // heuristic over seeded data rather than any real engagement metric.
 // ---------------------------------------------------------------------------
 
 /** Sponsored first, then most recently active — a reasonable "what's hot
  * right now" proxy from existing fields. */
-export function getTrendingCreators(creators: MockCreator[]): MockCreator[] {
+export function getTrendingCreators(creators: DiscoverCreator[]): DiscoverCreator[] {
   const now = Date.now();
   return [...creators].sort((a, b) => {
     const aBoosted = !!a.boostEndsAt && new Date(a.boostEndsAt).getTime() > now;
@@ -83,18 +83,18 @@ export function getTrendingCreators(creators: MockCreator[]): MockCreator[] {
   });
 }
 
-export function getFastResponders(creators: MockCreator[], maxMinutes = 10): MockCreator[] {
+export function getFastResponders(creators: DiscoverCreator[], maxMinutes = 10): DiscoverCreator[] {
   return creators
     .filter((creator) => creator.averageReplyMinutes <= maxMinutes)
     .sort((a, b) => a.averageReplyMinutes - b.averageReplyMinutes);
 }
 
-export function getOnlineNowCreators(creators: MockCreator[]): MockCreator[] {
+export function getOnlineNowCreators(creators: DiscoverCreator[]): DiscoverCreator[] {
   return creators.filter((creator) => creator.isOnline);
 }
 
 /** Highest chat price first — "premium" as in price tier, not a quality claim. */
-export function getPremiumPicks(creators: MockCreator[]): MockCreator[] {
+export function getPremiumPicks(creators: DiscoverCreator[]): DiscoverCreator[] {
   return [...creators].sort(
     (a, b) => (Number.parseFloat(b.chatPrice) || 0) - (Number.parseFloat(a.chatPrice) || 0)
   );
@@ -102,7 +102,7 @@ export function getPremiumPicks(creators: MockCreator[]): MockCreator[] {
 
 /** Demo-only heuristic: highest conversationCount as a stand-in for repeat
  * engagement, since most seeded creators have no real per-fan history. */
-export function getMostReturningFansDemo(creators: MockCreator[]): MockCreator[] {
+export function getMostReturningFansDemo(creators: DiscoverCreator[]): DiscoverCreator[] {
   return [...creators].sort((a, b) => (b.conversationCount ?? 0) - (a.conversationCount ?? 0));
 }
 
@@ -110,7 +110,7 @@ export type CreatorFilterChip = "online" | "available-today" | "fast-reply" | "l
 
 /** Filter-chip predicates for the Discover filter bar. "highest-rated" is a
  * demo-only heuristic (followers count) since there's no real rating data. */
-export function applyFilterChip(creators: MockCreator[], chip: CreatorFilterChip): MockCreator[] {
+export function applyFilterChip(creators: DiscoverCreator[], chip: CreatorFilterChip): DiscoverCreator[] {
   switch (chip) {
     case "online":
       return creators.filter((c) => c.isOnline);

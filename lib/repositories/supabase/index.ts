@@ -15,6 +15,16 @@ import type { ConversationRepository } from "@/lib/repositories/conversation-rep
 import type { MessageRepository } from "@/lib/repositories/message-repository";
 import type { PurchaseRepository } from "@/lib/repositories/purchase-repository";
 import type { NotificationRepository } from "@/lib/repositories/notification-repository";
+import {
+  queryApprovedCreators,
+  queryCreatorByUsername,
+  queryCreatorSearch,
+  queryFeaturedCreators,
+  queryCategories,
+  queryFavouriteCreatorIds,
+  insertFavourite,
+  deleteFavourite,
+} from "@/lib/repositories/supabase/creator-queries";
 
 function notImplemented(name: string): never {
   throw new Error(
@@ -53,17 +63,43 @@ export const supabaseProfileRepository: ProfileRepository = {
 };
 
 export const supabaseCreatorRepository: CreatorRepository = {
-  async list() {
-    notImplemented("supabaseCreatorRepository.list");
+  // Launch Sprint L2: fully implemented. Used server-side (e.g. by
+  // lib/auth/current-user.ts, or a future server-rendered page) — Client
+  // Components should import getClientCreatorRepository() from
+  // lib/repositories/creator-repository-client.ts instead, since this
+  // file's server client is guarded with `server-only` and cannot run in
+  // the browser at all.
+  async getApprovedCreators(options) {
+    const supabase = await createSupabaseServerClient();
+    return queryApprovedCreators(supabase, options);
   },
-  async getByUsername() {
-    notImplemented("supabaseCreatorRepository.getByUsername");
+  async getCreatorByUsername(username) {
+    const supabase = await createSupabaseServerClient();
+    return queryCreatorByUsername(supabase, username);
   },
-  async getPublicCreators() {
-    notImplemented("supabaseCreatorRepository.getPublicCreators");
+  async searchCreators(query) {
+    const supabase = await createSupabaseServerClient();
+    return queryCreatorSearch(supabase, query);
   },
-  async getPublicCreatorByUsername() {
-    notImplemented("supabaseCreatorRepository.getPublicCreatorByUsername");
+  async getFeaturedCreators(limit) {
+    const supabase = await createSupabaseServerClient();
+    return queryFeaturedCreators(supabase, limit);
+  },
+  async getCategories() {
+    const supabase = await createSupabaseServerClient();
+    return queryCategories(supabase);
+  },
+  async getFavouriteCreators(fanId) {
+    const supabase = await createSupabaseServerClient();
+    return queryFavouriteCreatorIds(supabase, fanId);
+  },
+  async favouriteCreator(fanId, creatorId) {
+    const supabase = await createSupabaseServerClient();
+    await insertFavourite(supabase, fanId, creatorId);
+  },
+  async unfavouriteCreator(fanId, creatorId) {
+    const supabase = await createSupabaseServerClient();
+    await deleteFavourite(supabase, fanId, creatorId);
   },
 
   // Phase 2.2A: implemented for real — needed to show a creator's
@@ -94,19 +130,6 @@ export const supabaseCreatorRepository: CreatorRepository = {
     const { data, error } = await query.select("*").single();
     if (error) throw error;
     return data;
-  },
-
-  async getCategories() {
-    notImplemented("supabaseCreatorRepository.getCategories");
-  },
-  async getFavourites() {
-    notImplemented("supabaseCreatorRepository.getFavourites");
-  },
-  async addFavourite() {
-    notImplemented("supabaseCreatorRepository.addFavourite");
-  },
-  async removeFavourite() {
-    notImplemented("supabaseCreatorRepository.removeFavourite");
   },
 };
 

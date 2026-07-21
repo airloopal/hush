@@ -1,8 +1,16 @@
 import { MOCK_CREATORS } from "@/lib/creators";
-import { findCreatorByUsername } from "@/lib/discovery";
 import { CATEGORIES } from "@/lib/categories";
 import { getFavoriteCreators, toggleFavoriteCreator, isCreatorFavorited } from "@/lib/favorites";
-import type { CreatorRepository } from "@/lib/repositories/creator-repository";
+import {
+  filterByCategory,
+  searchByUsername,
+  sortAllCreators,
+  applyFilterChip,
+  getMostReturningFansDemo,
+  findCreatorByUsername,
+} from "@/lib/discovery";
+import type { CreatorRepository, GetApprovedCreatorsOptions } from "@/lib/repositories/creator-repository";
+import type { DiscoverCreator } from "@/lib/discover-types";
 import type { Database } from "@/lib/supabase/database.types";
 
 type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
@@ -13,31 +21,58 @@ function notAvailableInDemoMode(name: string): never {
   );
 }
 
+// MockCreator already structurally satisfies DiscoverCreator (see
+// lib/discover-types.ts, and lib/discovery.ts's helpers below are typed
+// against DiscoverCreator directly) — no conversion needed anywhere here.
+
 export const demoCreatorRepository: CreatorRepository = {
-  async list() {
-    return MOCK_CREATORS;
+  async getApprovedCreators(options: GetApprovedCreatorsOptions = {}) {
+    let creators: DiscoverCreator[] = MOCK_CREATORS.slice();
+    if (options.category && options.category !== "All") {
+      creators = filterByCategory(creators, options.category as (typeof CATEGORIES)[number]);
+    }
+    if (options.availableOnly) {
+      creators = creators.filter((c) => c.isOnline);
+    }
+    switch (options.sort) {
+      case "newest":
+        creators = applyFilterChip(creators, "newest");
+        break;
+      case "most_popular":
+        creators = getMostReturningFansDemo(creators);
+        break;
+      case "featured":
+      default:
+        creators = sortAllCreators(creators);
+        break;
+    }
+    if (options.limit) creators = creators.slice(0, options.limit);
+    return creators;
   },
-  async getByUsername(username) {
+
+  async getCreatorByUsername(username) {
     return findCreatorByUsername(MOCK_CREATORS, username) ?? null;
   },
 
-  async getPublicCreators() {
-    notAvailableInDemoMode("CreatorRepository.getPublicCreators");
-  },
-  async getPublicCreatorByUsername() {
-    notAvailableInDemoMode("CreatorRepository.getPublicCreatorByUsername");
-  },
-  async getOwnCreatorProfile() {
-    notAvailableInDemoMode("CreatorRepository.getOwnCreatorProfile");
-  },
-  async updateOwnCreatorProfile() {
-    notAvailableInDemoMode("CreatorRepository.updateOwnCreatorProfile");
+  async searchCreators(query) {
+    // Demo-mode ranking: username match first, then bio/category text
+    // match — see docs/discover-data.md for how the real implementation
+    // ranks (username > display_name > headline > category).
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return [];
+    const usernameMatches = searchByUsername(MOCK_CREATORS, normalized);
+    const otherMatches = MOCK_CREATORS.filter(
+      (c) =>
+        !usernameMatches.includes(c) &&
+        (c.bio.toLowerCase().includes(normalized) || c.category.toLowerCase().includes(normalized))
+    );
+    return [...usernameMatches, ...otherMatches];
   },
 
-  // Demo categories are a flat string enum (lib/categories.ts), not real
-  // rows — synthesized into a minimal-but-honest CategoryRow shape rather
-  // than declining outright, since Discover's category filtering already
-  // depends on an equivalent list today.
+  async getFeaturedCreators(limit = 8) {
+    return getMostReturningFansDemo(MOCK_CREATORS).slice(0, limit);
+  },
+
   async getCategories(): Promise<CategoryRow[]> {
     const now = new Date().toISOString();
     return CATEGORIES.map((name, index) => ({
@@ -53,18 +88,23 @@ export const demoCreatorRepository: CreatorRepository = {
     }));
   },
 
-  // Favourites genuinely exist in demo mode already (lib/favorites.ts) —
-  // wrap them directly rather than declining.
-  async getFavourites(fanId) {
+  async getFavouriteCreators(fanId) {
     void fanId; // demo favourites are single-local-user, not keyed by fan id
     return getFavoriteCreators();
   },
-  async addFavourite(fanId, creatorId) {
+  async favouriteCreator(fanId, creatorId) {
     void fanId;
     if (!isCreatorFavorited(creatorId)) toggleFavoriteCreator(creatorId);
   },
-  async removeFavourite(fanId, creatorId) {
+  async unfavouriteCreator(fanId, creatorId) {
     void fanId;
     if (isCreatorFavorited(creatorId)) toggleFavoriteCreator(creatorId);
+  },
+
+  async getOwnCreatorProfile() {
+    notAvailableInDemoMode("CreatorRepository.getOwnCreatorProfile");
+  },
+  async updateOwnCreatorProfile() {
+    notAvailableInDemoMode("CreatorRepository.updateOwnCreatorProfile");
   },
 };
