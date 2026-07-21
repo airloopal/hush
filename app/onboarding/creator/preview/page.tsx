@@ -16,6 +16,8 @@ import {
   saveAccount,
 } from "@/lib/account";
 import { ADULT_CATEGORY, isAdultCategory } from "@/lib/categories";
+import { isDemoMode } from "@/lib/auth/mode";
+import { completeCreatorOnboardingSupabase } from "@/lib/auth/onboarding-sync";
 import type { CreatorAccount, OnboardingDraft } from "@/lib/types";
 
 export default function CreatorPreviewPage() {
@@ -36,8 +38,34 @@ export default function CreatorPreviewPage() {
     setDraft(d ?? null);
   }, [ready, router]);
 
-  function handleConfirm() {
+  const [pending, setPending] = React.useState(false);
+  const [syncError, setSyncError] = React.useState(false);
+
+  async function handleConfirm() {
     if (!draft?.username || !draft.category || !draft.bio) return;
+
+    if (!isDemoMode()) {
+      setSyncError(false);
+      setPending(true);
+      const ok = await completeCreatorOnboardingSupabase({
+        username: draft.username,
+        category: draft.category,
+        bio: draft.bio,
+        avatarDataUrl: draft.avatarDataUrl,
+        chatPrice: draft.chatPrice ?? "0",
+        photoPrice: draft.photoPrice ?? "0",
+        videoPrice: draft.videoPrice ?? "0",
+        adultConfirmed: draft.adultConfirmed ?? false,
+      });
+      setPending(false);
+      if (!ok) {
+        setSyncError(true);
+        return;
+      }
+      clearOnboardingState();
+      router.push("/dashboard");
+      return;
+    }
 
     const account: CreatorAccount = {
       role: "creator",
@@ -109,11 +137,19 @@ export default function CreatorPreviewPage() {
         </CardContent>
       </Card>
 
+      {syncError && (
+        <p className="text-xs text-danger" role="alert">
+          Couldn&apos;t submit your creator profile. Check your connection and try again.
+        </p>
+      )}
+
       <div className="flex gap-3">
-        <Button variant="outline" onClick={() => router.push("/onboarding/creator")}>
+        <Button variant="outline" onClick={() => router.push("/onboarding/creator")} disabled={pending}>
           Edit
         </Button>
-        <Button onClick={handleConfirm}>Finish setup</Button>
+        <Button onClick={handleConfirm} isLoading={pending} disabled={pending}>
+          Finish setup
+        </Button>
       </div>
     </OnboardingShell>
   );

@@ -12,13 +12,16 @@ import {
   ModalTitle,
   ModalTrigger,
 } from "@/components/ui/modal";
-import { clearSession, homeRouteForRole, setSession } from "@/lib/demo-auth";
+import { homeRouteForRole, setSession } from "@/lib/demo-auth";
+import { signOutEverywhere } from "@/lib/auth/auth-service";
+import { isDemoMode } from "@/lib/auth/mode";
 import { getOtherDemoUser } from "@/lib/demo-users";
 import type { DemoUser } from "@/lib/demo-auth-types";
 
 export function AccountMenu({ user }: { user: DemoUser }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
+  const [signingOut, setSigningOut] = React.useState(false);
 
   function handleSwitchAccount() {
     const next = getOtherDemoUser(user);
@@ -32,10 +35,15 @@ export function AccountMenu({ user }: { user: DemoUser }) {
     router.push("/settings");
   }
 
-  function handleLogout() {
-    clearSession();
+  async function handleLogout() {
+    setSigningOut(true);
+    // Awaited so the Supabase session is actually cleared server-side
+    // before we navigate — otherwise a race lets authenticated content
+    // flash briefly on the destination page.
+    await signOutEverywhere();
     setOpen(false);
     router.push("/");
+    router.refresh();
   }
 
   return (
@@ -64,9 +72,16 @@ export function AccountMenu({ user }: { user: DemoUser }) {
         </div>
 
         <div className="flex flex-col gap-1 border-t border-border pt-2">
-          <AccountMenuItem icon={RefreshCcw} label="Switch Account" onClick={handleSwitchAccount} />
+          {isDemoMode() && (
+            <AccountMenuItem icon={RefreshCcw} label="Switch Account" onClick={handleSwitchAccount} />
+          )}
           <AccountMenuItem icon={Settings} label="Settings" onClick={handleSettings} />
-          <AccountMenuItem icon={LogOut} label="Logout" onClick={handleLogout} />
+          <AccountMenuItem
+            icon={LogOut}
+            label={signingOut ? "Logging out…" : "Logout"}
+            onClick={handleLogout}
+            disabled={signingOut}
+          />
         </div>
       </ModalContent>
     </Modal>
@@ -77,16 +92,19 @@ function AccountMenuItem({
   icon: Icon,
   label,
   onClick,
+  disabled,
 }: {
   icon: typeof LogOut;
   label: string;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-text-primary transition-colors duration-fast ease-signal hover:bg-surface-muted"
+      disabled={disabled}
+      className="flex items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-text-primary transition-colors duration-fast ease-signal hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
     >
       <Icon className="h-4 w-4 text-text-muted" />
       {label}

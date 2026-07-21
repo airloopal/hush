@@ -10,6 +10,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useRedirectIfOnboarded } from "@/lib/use-account-guard";
 import { clearOnboardingState, getOnboardingState, saveAccount } from "@/lib/account";
 import { ADULT_CATEGORY, CATEGORIES, type Category } from "@/lib/categories";
+import { isDemoMode } from "@/lib/auth/mode";
+import { completeFanOnboardingSupabase } from "@/lib/auth/onboarding-sync";
 import type { FanAccount } from "@/lib/types";
 
 export default function FanInterestsPage() {
@@ -43,10 +45,30 @@ export default function FanInterestsPage() {
 
   const wantsAdult = interests.includes(ADULT_CATEGORY);
   const canContinue = interests.length > 0 && (!wantsAdult || adultConfirmed);
+  const [pending, setPending] = React.useState(false);
+  const [syncError, setSyncError] = React.useState(false);
 
-  function handleContinue() {
+  async function handleContinue() {
     setSubmitted(true);
     if (!username || !canContinue) return;
+
+    if (!isDemoMode()) {
+      setSyncError(false);
+      setPending(true);
+      const ok = await completeFanOnboardingSupabase({
+        username,
+        interests,
+        adultConfirmed: wantsAdult ? adultConfirmed : false,
+      });
+      setPending(false);
+      if (!ok) {
+        setSyncError(true);
+        return; // Stays on the page — a recoverable, visible failure rather than a silent one.
+      }
+      clearOnboardingState();
+      router.push("/discover");
+      return;
+    }
 
     const account: FanAccount = {
       role: "fan",
@@ -111,7 +133,15 @@ export default function FanInterestsPage() {
         </Card>
       )}
 
-      <Button onClick={handleContinue}>Finish setup</Button>
+      {syncError && (
+        <p className="text-xs text-danger" role="alert">
+          Couldn&apos;t save your profile. Check your connection and try again.
+        </p>
+      )}
+
+      <Button onClick={handleContinue} isLoading={pending} disabled={pending}>
+        Finish setup
+      </Button>
     </OnboardingShell>
   );
 }
