@@ -20,6 +20,11 @@ export function isPublicPath(pathname: string): boolean {
   if (PUBLIC_ROUTES.has(pathname)) return true;
   // Next.js internals / static assets — never gated.
   if (pathname.startsWith("/_next") || pathname.startsWith("/favicon")) return true;
+  // /dev/* (e.g. the go-live diagnostics page) enforces its own, more
+  // precise dev-mode-or-admin check — see app/dev/diagnostics/page.tsx.
+  // Gating it here too would incorrectly force a login even for a
+  // developer just checking whether Supabase is configured at all.
+  if (pathname.startsWith("/dev/")) return true;
   return false;
 }
 
