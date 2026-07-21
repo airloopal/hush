@@ -29,6 +29,12 @@ export const supabaseProfileRepository: ProfileRepository = {
   async upsert() {
     notImplemented("supabaseProfileRepository.upsert");
   },
+  async getById() {
+    notImplemented("supabaseProfileRepository.getById");
+  },
+  async updateOwnProfile() {
+    notImplemented("supabaseProfileRepository.updateOwnProfile");
+  },
 };
 
 export const supabaseCreatorRepository: CreatorRepository = {
@@ -37,6 +43,30 @@ export const supabaseCreatorRepository: CreatorRepository = {
   },
   async getByUsername() {
     notImplemented("supabaseCreatorRepository.getByUsername");
+  },
+  async getPublicCreators() {
+    notImplemented("supabaseCreatorRepository.getPublicCreators");
+  },
+  async getPublicCreatorByUsername() {
+    notImplemented("supabaseCreatorRepository.getPublicCreatorByUsername");
+  },
+  async getOwnCreatorProfile() {
+    notImplemented("supabaseCreatorRepository.getOwnCreatorProfile");
+  },
+  async updateOwnCreatorProfile() {
+    notImplemented("supabaseCreatorRepository.updateOwnCreatorProfile");
+  },
+  async getCategories() {
+    notImplemented("supabaseCreatorRepository.getCategories");
+  },
+  async getFavourites() {
+    notImplemented("supabaseCreatorRepository.getFavourites");
+  },
+  async addFavourite() {
+    notImplemented("supabaseCreatorRepository.addFavourite");
+  },
+  async removeFavourite() {
+    notImplemented("supabaseCreatorRepository.removeFavourite");
   },
 };
 
