@@ -8,6 +8,7 @@
  * which implementation is active).
  */
 
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ProfileRepository } from "@/lib/repositories/profile-repository";
 import type { CreatorRepository } from "@/lib/repositories/creator-repository";
 import type { ConversationRepository } from "@/lib/repositories/conversation-repository";
@@ -29,11 +30,25 @@ export const supabaseProfileRepository: ProfileRepository = {
   async upsert() {
     notImplemented("supabaseProfileRepository.upsert");
   },
-  async getById() {
-    notImplemented("supabaseProfileRepository.getById");
+
+  // Phase 2.2A: implemented for real — the auth flow's profile
+  // synchronization (lib/auth/current-user.ts) needs genuine data here.
+  async getById(id) {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle();
+    if (error) throw error;
+    return data ?? null;
   },
-  async updateOwnProfile() {
-    notImplemented("supabaseProfileRepository.updateOwnProfile");
+  async updateOwnProfile(id, fields) {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("profiles")
+      .update(fields)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw error;
+    return data;
   },
 };
 
@@ -50,12 +65,37 @@ export const supabaseCreatorRepository: CreatorRepository = {
   async getPublicCreatorByUsername() {
     notImplemented("supabaseCreatorRepository.getPublicCreatorByUsername");
   },
-  async getOwnCreatorProfile() {
-    notImplemented("supabaseCreatorRepository.getOwnCreatorProfile");
+
+  // Phase 2.2A: implemented for real — needed to show a creator's
+  // approval status (draft/pending_review/approved/etc.) after login and
+  // to let creator onboarding submit pricing/category selections.
+  async getOwnCreatorProfile(userId) {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("creator_profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) throw error;
+    return data ?? null;
   },
-  async updateOwnCreatorProfile() {
-    notImplemented("supabaseCreatorRepository.updateOwnCreatorProfile");
+  async updateOwnCreatorProfile(userId, fields) {
+    const supabase = await createSupabaseServerClient();
+    const { data: existing } = await supabase
+      .from("creator_profiles")
+      .select("user_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const query = existing
+      ? supabase.from("creator_profiles").update(fields).eq("user_id", userId)
+      : supabase.from("creator_profiles").insert({ user_id: userId, ...fields });
+
+    const { data, error } = await query.select("*").single();
+    if (error) throw error;
+    return data;
   },
+
   async getCategories() {
     notImplemented("supabaseCreatorRepository.getCategories");
   },

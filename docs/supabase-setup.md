@@ -220,3 +220,82 @@ update public.profiles set role = 'admin' where id = '<their-auth-uid>';
 Do this only through a trusted, server-side/administrative connection —
 never expose a path that lets an ordinary authenticated request set its
 own role.
+
+## 12. Auth configuration (Phase 2.2A)
+
+Real Supabase authentication (`lib/auth/`) activates automatically once
+`NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` are set (see § 2)
+— nothing else to flip. These settings need to be configured on the
+Supabase project itself before signup/login/password-reset actually work.
+
+### Site URL and Redirect URLs
+
+In the Supabase dashboard → **Authentication → URL Configuration**:
+
+- **Site URL**: your production URL (e.g. `https://your-app.vercel.app`).
+- **Redirect URLs** (allow-list — Supabase rejects any `emailRedirectTo`/
+  `redirectTo` not on this list, which is what actually prevents open
+  redirects at the provider level):
+  - `http://localhost:3000/auth/callback` (local dev)
+  - `https://your-app.vercel.app/auth/callback` (production)
+  - `https://*-your-team.vercel.app/auth/callback` (Vercel preview
+    deployments, if you want email links to work from PR previews too —
+    optional)
+
+### Email verification configuration
+
+**Authentication → Email Templates → Confirm signup**: the default
+template works as-is; it links to `{{ .ConfirmationURL }}`, which
+`lib/auth/auth-service.ts`'s `signUp()` call points at
+`${origin}/auth/callback` via `emailRedirectTo`. Confirm **Authentication
+→ Providers → Email → "Confirm email"** is switched **on** (it's on by
+default) — this is what makes `app/auth/callback/route.ts`'s expired/
+invalid-link handling actually reachable, and gates login until the
+address is verified.
+
+### Password reset redirect configuration
+
+**Authentication → Email Templates → Reset password** likewise links to
+`{{ .ConfirmationURL }}`. `requestPasswordReset()` in
+`lib/auth/auth-service.ts` sets `redirectTo` to
+`${origin}/auth/callback?next=/reset-password` — the callback route
+recognizes `next=/reset-password` and forwards there regardless of
+onboarding/profile state (see `docs/authentication-flow.md`).
+
+### Local development callback URL
+
+`http://localhost:3000/auth/callback` — add this to the Redirect URLs
+allow-list above, or email links generated while developing locally will
+be rejected by Supabase.
+
+### Production (Vercel) callback URL
+
+`https://<your-domain>/auth/callback` — set this as both the Site URL and
+in the Redirect URLs allow-list once you have a real domain. Update it
+again if the domain changes.
+
+### Demo mode behavior
+
+With no Supabase environment configured, every page under `lib/auth/`
+degrades to the existing local demo system (`lib/demo-auth.ts`) — see
+`docs/authentication-flow.md` § "Demo mode fallback" for exactly what
+that means per page. `isDemoMode()` (`lib/auth/mode.ts`) is the single
+source of truth other code should check; nothing should call
+`isSupabaseConfigured()` directly outside `lib/auth/` and
+`lib/supabase/env.ts`.
+
+### Creator role promotion, safely
+
+Selecting "Creator" at signup **never** grants the `creator` role by
+itself — `handle_new_user()` always inserts `role = fan`, and
+`account_type_requested` (passed as signup metadata purely so the client
+can route to creator onboarding) is never read by any database trigger.
+After creator onboarding, the browser inserts its own `creator_profiles`
+row (forced to `status = 'draft'` by
+`protect_creator_profile_admin_fields`) and self-submits it to
+`pending_review` — the one self-service transition
+`20260701000014_allow_creator_submit_for_review.sql` explicitly allows.
+`profiles.role` itself only ever becomes `creator` through an admin
+action (see § 9–11) — this sprint doesn't yet add that promotion step to
+any UI; it remains a direct SQL/admin-tooling action, matching the
+"do not implement admin UI" boundary for this phase.

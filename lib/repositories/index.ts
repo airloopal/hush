@@ -56,11 +56,13 @@ export interface Repositories {
  */
 export function getRepositories(): Repositories {
   const useSupabase = isSupabaseConfigured();
-  void useSupabase; // referenced now so the intent is explicit; used per-repository as each one migrates
 
   return {
-    profiles: demoProfileRepository,
-    creators: demoCreatorRepository,
+    // Genuinely implemented in Phase 2.2A — safe to flip now that
+    // Supabase auth actually needs real profile/creator data.
+    profiles: useSupabase ? supabaseProfileRepository : demoProfileRepository,
+    creators: useSupabase ? supabaseCreatorRepository : demoCreatorRepository,
+    // Still unimplemented stubs — stay on demo until each is built out.
     conversations: demoConversationRepository,
     messages: demoMessageRepository,
     purchases: demoPurchaseRepository,

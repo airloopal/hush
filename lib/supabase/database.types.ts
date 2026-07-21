@@ -55,6 +55,7 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
+        Relationships: [];
       };
       categories: {
         Row: {
@@ -80,6 +81,7 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["categories"]["Insert"]>;
+        Relationships: [];
       };
       creator_profiles: {
         Row: {
@@ -131,6 +133,7 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["creator_profiles"]["Insert"]>;
+        Relationships: [];
       };
       creator_categories: {
         Row: {
@@ -146,6 +149,7 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["creator_categories"]["Insert"]>;
+        Relationships: [];
       };
       creator_favourites: {
         Row: {
@@ -159,6 +163,7 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["creator_favourites"]["Insert"]>;
+        Relationships: [];
       };
     };
     Views: {
@@ -185,6 +190,7 @@ export interface Database {
           primary_category_slug: string | null;
           primary_category_name: string | null;
         };
+        Relationships: [];
       };
       public_creator_categories: {
         Row: {
@@ -194,6 +200,7 @@ export interface Database {
           category_name: string;
           is_primary: boolean;
         };
+        Relationships: [];
       };
     };
     Functions: {
