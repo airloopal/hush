@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Camera, MessageCircle, ShieldAlert, Video } from "lucide-react";
+import { AlertTriangle, Camera, Loader2, MessageCircle, ShieldAlert, Video } from "lucide-react";
 
 import { NavigationBar } from "@/components/navigation-bar";
 import { BottomNav } from "@/components/bottom-nav";
@@ -26,20 +26,83 @@ import { useRequireAccount } from "@/lib/use-account-guard";
 import { hasAdultAccess } from "@/lib/account";
 import { findCreatorByUsername } from "@/lib/discovery";
 import { MOCK_CREATORS } from "@/lib/creators";
+import { isDemoMode } from "@/lib/auth/mode";
+import { getClientCreatorRepository } from "@/lib/repositories/creator-repository-client";
 import { findActiveSession, findLatestSession, isCreatorBlocked } from "@/lib/chat";
 import { getPrivacySettings } from "@/lib/preferences";
 import { cn, formatPresence } from "@/lib/utils";
 import type { Account } from "@/lib/types";
 import type { ChatSession } from "@/lib/chat-types";
+import type { DiscoverCreator } from "@/lib/discover-types";
 
 export default function CreatorProfilePage() {
   const params = useParams<{ username: string }>();
   const router = useRouter();
   const { ready, account } = useRequireAccount();
+  const demoMode = isDemoMode();
+
+  // Real mode: fetched from Supabase (via the public, approved-only view —
+  // see lib/repositories/supabase/creator-queries.ts). Hooks run
+  // unconditionally, before any early return, per Rules of Hooks; the
+  // effect itself no-ops in demo mode.
+  const [remoteCreator, setRemoteCreator] = React.useState<DiscoverCreator | null | undefined>(undefined);
+  const [loadError, setLoadError] = React.useState(false);
+
+  React.useEffect(() => {
+    if (demoMode) return;
+    let cancelled = false;
+    setRemoteCreator(undefined);
+    setLoadError(false);
+    getClientCreatorRepository()
+      .getCreatorByUsername(params.username)
+      .then((result) => {
+        if (!cancelled) setRemoteCreator(result);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [demoMode, params.username]);
 
   if (!ready || !account) return null;
 
-  const creator = findCreatorByUsername(MOCK_CREATORS, params.username);
+  // Demo mode: synchronous, as before. Real mode: undefined while loading,
+  // null if not found — and "not found" deliberately covers not-existing,
+  // pending-approval, and suspended alike (the public_creator_profiles view
+  // only ever returns approved+active rows), so this page never discloses
+  // moderation/account-status information to a visitor who isn't the
+  // creator themselves (§10 security — see docs/discover-data.md).
+  const creator = demoMode ? findCreatorByUsername(MOCK_CREATORS, params.username) : remoteCreator;
+
+  if (!demoMode && creator === undefined && !loadError) {
+    return (
+      <ProfileShell account={account}>
+        <div className="flex flex-col items-center gap-3 py-16 text-text-secondary">
+          <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
+          <p className="text-sm">Loading profile…</p>
+        </div>
+      </ProfileShell>
+    );
+  }
+
+  if (!demoMode && loadError) {
+    return (
+      <ProfileShell account={account}>
+        <EmptyState
+          icon={AlertTriangle}
+          title="Couldn't load this profile"
+          description="Something went wrong reaching the server. Check your connection and try again."
+          action={
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          }
+        />
+      </ProfileShell>
+    );
+  }
 
   if (!creator) {
     return (
@@ -169,7 +232,7 @@ function ChatCta({
   fanUsername,
   router,
 }: {
-  creator: NonNullable<ReturnType<typeof findCreatorByUsername>>;
+  creator: DiscoverCreator;
   fanUsername: string;
   router: ReturnType<typeof useRouter>;
 }) {

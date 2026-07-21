@@ -8,9 +8,13 @@ import { DiscoverHero } from "@/components/discover-hero";
 import { DiscoverFilters } from "@/components/discover-filters";
 import { DiscoverFilterBar } from "@/components/discover-filter-bar";
 import { CreatorSection } from "@/components/creator-section";
+import { EmptyState } from "@/components/empty-state";
 import { useRequireRole } from "@/lib/use-account-guard";
 import { hasAdultAccess } from "@/lib/account";
 import { MOCK_CREATORS } from "@/lib/creators";
+import { isDemoMode } from "@/lib/auth/mode";
+import { getClientCreatorRepository } from "@/lib/repositories/creator-repository-client";
+import { useCreatorFavorites } from "@/lib/use-creator-favorites";
 import {
   addRecentSearch,
   readDiscoverFilters,
@@ -18,14 +22,13 @@ import {
   writeDiscoverFilters,
 } from "@/lib/discover-session";
 import { getPrivacySettings } from "@/lib/preferences";
-import { useFavoriteCreators } from "@/lib/use-favorites";
 import type { Category } from "@/lib/categories";
+import type { DiscoverCreator } from "@/lib/discover-types";
 import {
   applyFilterChip,
   filterByAdultAccess,
   filterByCategory,
   getFastResponders,
-  getMostReturningFansDemo,
   getNewCreators,
   getOnlineNowCreators,
   getPremiumPicks,
@@ -37,22 +40,99 @@ import {
   type CategoryFilter,
   type CreatorFilterChip,
 } from "@/lib/discovery";
+import { AlertTriangle, Loader2 } from "lucide-react";
+
+// Debounce so real-mode search doesn't fire a query on every keystroke.
+const SEARCH_DEBOUNCE_MS = 300;
 
 export default function DiscoverPage() {
   const { ready, account } = useRequireRole("fan");
+  const demoMode = isDemoMode();
   const [search, setSearch] = React.useState("");
   const [category, setCategory] = React.useState<CategoryFilter>("All");
   const [filterChip, setFilterChip] = React.useState<CreatorFilterChip | null>(null);
   const [restored, setRestored] = React.useState(false);
   const [recentSearches, setRecentSearches] = React.useState<string[]>([]);
   const [allowRecommendations] = React.useState(() => getPrivacySettings().allowCreatorRecommendations);
-  const favorites = useFavoriteCreators();
+  const { favorites } = useCreatorFavorites();
+
+  // Real-mode data: fetched once on arrival, then filtered/derived
+  // client-side with the exact same pure functions demo mode already uses
+  // (lib/discovery.ts) — see lib/discover-types.ts for how a Supabase row
+  // is adapted into the same shape MOCK_CREATORS already has.
+  const [remoteCreators, setRemoteCreators] = React.useState<DiscoverCreator[] | null>(null);
+  const [remoteFeatured, setRemoteFeatured] = React.useState<DiscoverCreator[] | null>(null);
+  const [loadError, setLoadError] = React.useState(false);
+  const [loading, setLoading] = React.useState(!demoMode);
+
+  // Server-backed search results (§5) — only used in real mode when there's
+  // an active search term; category/chip filtering stays client-side over
+  // the already-fetched approved-creator list, same as demo mode.
+  const [searchResults, setSearchResults] = React.useState<DiscoverCreator[] | null>(null);
+  const [searching, setSearching] = React.useState(false);
 
   const adultAllowed = hasAdultAccess(account);
 
+  React.useEffect(() => {
+    if (demoMode) return;
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(false);
+    const repo = getClientCreatorRepository();
+    Promise.all([repo.getApprovedCreators(), repo.getFeaturedCreators(8)])
+      .then(([approved, featured]) => {
+        if (cancelled) return;
+        setRemoteCreators(approved);
+        setRemoteFeatured(featured);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [demoMode]);
+
+  // Server-backed search (§5), debounced.
+  React.useEffect(() => {
+    if (demoMode) return;
+    const trimmed = search.trim();
+    if (!trimmed) {
+      setSearchResults(null);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    const timer = setTimeout(() => {
+      getClientCreatorRepository()
+        .searchCreators(trimmed)
+        .then((results) => {
+          if (!cancelled) setSearchResults(results);
+        })
+        .catch(() => {
+          if (!cancelled) setSearchResults([]);
+        })
+        .finally(() => {
+          if (!cancelled) setSearching(false);
+        });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [demoMode, search]);
+
+  const baseCreators = React.useMemo(
+    () => (demoMode ? MOCK_CREATORS : remoteCreators ?? []),
+    [demoMode, remoteCreators]
+  );
+
   const visibleCreators = React.useMemo(
-    () => filterByAdultAccess(MOCK_CREATORS, adultAllowed),
-    [adultAllowed]
+    () => filterByAdultAccess(baseCreators, adultAllowed),
+    [baseCreators, adultAllowed]
   );
 
   const categories = React.useMemo(() => visibleCategories(adultAllowed), [adultAllowed]);
@@ -86,13 +166,21 @@ export default function DiscoverPage() {
   }
 
   const filtered = React.useMemo(() => {
+    if (!demoMode && search.trim()) {
+      // Real mode with an active search: start from the server-ranked
+      // results, then still apply the category/chip filters client-side.
+      const base = filterByAdultAccess(searchResults ?? [], adultAllowed);
+      const byCategory = filterByCategory(base, category);
+      return filterChip ? applyFilterChip(byCategory, filterChip) : byCategory;
+    }
     const byCategory = filterByCategory(visibleCreators, category);
-    const bySearch = searchByUsername(byCategory, search);
+    const bySearch = demoMode ? searchByUsername(byCategory, search) : byCategory;
     return filterChip ? applyFilterChip(bySearch, filterChip) : bySearch;
-  }, [visibleCreators, category, search, filterChip]);
+  }, [demoMode, search, searchResults, adultAllowed, visibleCreators, category, filterChip]);
 
   const isFiltering = search.trim().length > 0 || category !== "All" || filterChip !== null;
-  const favoriteCreators = visibleCreators.filter((c) => favorites.includes(c.username));
+  const favoriteCreators = visibleCreators.filter((c) => favorites.includes(demoMode ? c.username : c.id));
+  const featuredCreators = demoMode ? null : filterByAdultAccess(remoteFeatured ?? [], adultAllowed);
 
   if (!ready || !account) return null;
 
@@ -121,27 +209,49 @@ export default function DiscoverPage() {
           <DiscoverFilterBar active={filterChip} onChange={setFilterChip} />
         </div>
 
-        {isFiltering ? (
+        {!demoMode && loading ? (
+          <div className="flex flex-col items-center gap-3 py-16 text-text-secondary">
+            <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
+            <p className="text-sm">Loading creators…</p>
+          </div>
+        ) : !demoMode && loadError ? (
+          <EmptyState
+            icon={AlertTriangle}
+            title="Couldn't load creators"
+            description="Something went wrong reaching the server. Check your connection and try again."
+            action={
+              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                Retry
+              </Button>
+            }
+          />
+        ) : isFiltering ? (
           <CreatorSection
             title="Results"
             creators={
-              filterChip && ["lowest-price", "fast-reply", "highest-rated", "newest"].includes(filterChip)
+              !demoMode && searching
+                ? []
+                : filterChip && ["lowest-price", "fast-reply", "highest-rated", "newest"].includes(filterChip)
                 ? filtered
                 : sortAllCreators(filtered)
             }
-            emptyMessage="No creators found. Try a different search, category, or filter."
+            emptyMessage={
+              !demoMode && searching ? "Searching…" : "No creators found. Try a different search, category, or filter."
+            }
             emptyAction={
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSearch("");
-                  setCategory("All");
-                  setFilterChip(null);
-                }}
-              >
-                Clear filters
-              </Button>
+              !searching && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearch("");
+                    setCategory("All");
+                    setFilterChip(null);
+                  }}
+                >
+                  Clear filters
+                </Button>
+              )
             }
             layout="grid"
           />
@@ -157,62 +267,107 @@ export default function DiscoverPage() {
               />
             )}
 
-            <CreatorSection
-              title="🔥 Trending"
-              description="Boosted and recently active creators."
-              creators={getTrendingCreators(visibleCreators).slice(0, 8)}
-              emptyMessage="No trending creators right now."
-              layout="row"
-            />
-            <CreatorSection
-              title="⚡ Fast Responders"
-              description="Typically reply within 10 minutes."
-              creators={getFastResponders(visibleCreators).slice(0, 8)}
-              emptyMessage="No fast responders right now."
-              layout="row"
-            />
-            <CreatorSection
-              title="🟢 Online Now"
-              creators={getOnlineNowCreators(visibleCreators)}
-              emptyMessage="No creators are online right now."
-              layout="row"
-            />
-            {allowRecommendations && (
+            {demoMode ? (
               <>
                 <CreatorSection
-                  title="⭐ New Creators"
-                  description="Recently joined Hush."
-                  creators={getNewCreators(visibleCreators)}
-                  emptyMessage="No new creators right now."
+                  title="🔥 Trending"
+                  description="Boosted and recently active creators."
+                  creators={getTrendingCreators(visibleCreators).slice(0, 8)}
+                  emptyMessage="No trending creators right now."
                   layout="row"
                 />
                 <CreatorSection
-                  title="💎 Premium Picks"
-                  description="Highest chat-access pricing."
-                  creators={getPremiumPicks(visibleCreators).slice(0, 8)}
-                  emptyMessage="No premium picks right now."
+                  title="⚡ Fast Responders"
+                  description="Typically reply within 10 minutes."
+                  creators={getFastResponders(visibleCreators).slice(0, 8)}
+                  emptyMessage="No fast responders right now."
                   layout="row"
                 />
                 <CreatorSection
-                  title="❤️ Most Returning Fans (Demo)"
-                  description="Highest repeat-conversation count in this demo."
-                  creators={getMostReturningFansDemo(visibleCreators).slice(0, 8)}
-                  emptyMessage="No data yet."
+                  title="🟢 Online Now"
+                  creators={getOnlineNowCreators(visibleCreators)}
+                  emptyMessage="No creators are online right now."
+                  layout="row"
+                />
+                {allowRecommendations && (
+                  <>
+                    <CreatorSection
+                      title="⭐ New Creators"
+                      description="Recently joined Hush."
+                      creators={getNewCreators(visibleCreators)}
+                      emptyMessage="No new creators right now."
+                      layout="row"
+                    />
+                    <CreatorSection
+                      title="💎 Premium Picks"
+                      description="Highest chat-access pricing."
+                      creators={getPremiumPicks(visibleCreators).slice(0, 8)}
+                      emptyMessage="No premium picks right now."
+                      layout="row"
+                    />
+                    <CreatorSection
+                      title="❤️ Most Returning Fans (Demo)"
+                      description="Highest repeat-conversation count in this demo."
+                      creators={getTrendingCreators(visibleCreators).slice(0, 8)}
+                      emptyMessage="No data yet."
+                      layout="row"
+                    />
+                    <CreatorSection
+                      title="Sponsored"
+                      description="Boosted creator placements."
+                      creators={getSponsoredCreators(visibleCreators)}
+                      emptyMessage="No sponsored creators right now."
+                      layout="row"
+                    />
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <CreatorSection
+                  title="⭐ Featured Creators"
+                  description="Ranked by returning fans, then completed conversations."
+                  creators={featuredCreators ?? []}
+                  emptyMessage="No featured creators yet."
                   layout="row"
                 />
                 <CreatorSection
-                  title="Sponsored"
-                  description="Boosted creator placements."
-                  creators={getSponsoredCreators(visibleCreators)}
-                  emptyMessage="No sponsored creators right now."
+                  title="🟢 Online Now"
+                  creators={getOnlineNowCreators(visibleCreators)}
+                  emptyMessage="No creators are online right now."
                   layout="row"
                 />
+                {allowRecommendations && (
+                  <>
+                    <CreatorSection
+                      title="⭐ New Creators"
+                      description="Recently joined Hush."
+                      creators={getNewCreators(visibleCreators)}
+                      emptyMessage="No new creators right now."
+                      layout="row"
+                    />
+                    <CreatorSection
+                      title="💎 Premium Picks"
+                      description="Highest chat-access pricing."
+                      creators={getPremiumPicks(visibleCreators).slice(0, 8)}
+                      emptyMessage="No premium picks right now."
+                      layout="row"
+                    />
+                  </>
+                )}
               </>
             )}
             <CreatorSection
               title="All Creators"
               creators={sortAllCreators(visibleCreators)}
               emptyMessage="No creators found."
+              emptyAction={
+                !demoMode ? (
+                  <p className="text-xs text-text-muted">
+                    No approved creators yet — check back soon.
+                  </p>
+                ) : undefined
+              }
               layout="grid"
             />
           </>
