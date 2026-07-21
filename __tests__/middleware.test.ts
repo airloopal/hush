@@ -19,6 +19,14 @@ describe("isPublicPath", () => {
     }
   });
 
+  it("treats /dev/* as public (the diagnostics page enforces its own access control)", () => {
+    expect(isPublicPath("/dev/diagnostics")).toBe(true);
+  });
+
+  it("does not treat a route merely starting with 'dev' as public", () => {
+    expect(isPublicPath("/devious")).toBe(false);
+  });
+
   it("treats a public-looking prefix that isn't an exact match as protected", () => {
     // Guards against a route-protection gap from overly loose prefix matching.
     expect(isPublicPath("/settings-secret")).toBe(false);
