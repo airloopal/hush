@@ -1,6 +1,9 @@
+"use client";
+
 import { Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { DemoDataBadge } from "@/components/demo-data-badge";
+import { isDemoMode } from "@/lib/auth/mode";
 
 const DEMO_REVIEWS = [
   { author: "J.", rating: 5, quote: "Really thoughtful replies — always felt worth the 24 hours." },
@@ -9,6 +12,11 @@ const DEMO_REVIEWS = [
 ];
 
 export function CreatorReviews() {
+  // No real reviews system exists yet — showing these fabricated examples
+  // on a real creator's real profile would misrepresent actual fan
+  // feedback, so this only ever renders in demo mode.
+  if (!isDemoMode()) return null;
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">

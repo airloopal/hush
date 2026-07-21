@@ -3,12 +3,12 @@ import { Users } from "lucide-react";
 
 import { CreatorTile } from "@/components/creator-tile";
 import { EmptyState } from "@/components/empty-state";
-import type { MockCreator } from "@/lib/types";
+import type { DiscoverCreator } from "@/lib/discover-types";
 
 export interface CreatorSectionProps {
   title: string;
   description?: string;
-  creators: MockCreator[];
+  creators: DiscoverCreator[];
   emptyMessage: string;
   emptyAction?: React.ReactNode;
   /** "row" scrolls horizontally on mobile; "grid" wraps into a full grid. */

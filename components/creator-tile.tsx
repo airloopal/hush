@@ -9,15 +9,15 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { ResponseTimeChip } from "@/components/response-time-chip";
 import { FavoriteButton } from "@/components/favorite-button";
 import { isCreatorBlocked } from "@/lib/chat";
-import type { MockCreator } from "@/lib/types";
+import type { DiscoverCreator } from "@/lib/discover-types";
 import { cn, formatPresence } from "@/lib/utils";
 
 export interface CreatorTileProps {
-  creator: MockCreator;
+  creator: DiscoverCreator;
   className?: string;
 }
 
-const isSponsored = (creator: MockCreator) =>
+const isSponsored = (creator: DiscoverCreator) =>
   !!creator.boostEndsAt && new Date(creator.boostEndsAt).getTime() > Date.now();
 
 /** Compact marketplace card for Discover — links to the full profile.
@@ -94,6 +94,7 @@ export function CreatorTile({ creator, className }: CreatorTileProps) {
       </Card>
       <FavoriteButton
         username={creator.username}
+        creatorId={creator.id}
         size="sm"
         className="pointer-events-auto absolute right-3 top-3 z-[2]"
       />
