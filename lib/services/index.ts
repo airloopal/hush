@@ -27,7 +27,7 @@ export function getServices() {
     profiles: new ProfileService(repositories.profiles),
     creators: new CreatorService(repositories.creators),
     conversations: new ConversationService(repositories.conversations, repositories.conversationSessions),
-    messaging: new MessagingService(repositories.messages),
+    messaging: new MessagingService(repositories.messages, repositories.conversationSessions),
     purchases: new PurchaseService(repositories.purchases),
     notifications: new NotificationService(repositories.notifications),
   };
