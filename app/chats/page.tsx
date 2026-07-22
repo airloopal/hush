@@ -23,6 +23,7 @@ import {
 import { MOCK_CREATORS } from "@/lib/creators";
 import { findCreatorByUsername } from "@/lib/discovery";
 import { getClientConversationRepository, getClientConversationSessionRepository } from "@/lib/repositories/conversation-repository-client";
+import { getClientMessageRepository } from "@/lib/repositories/message-repository-client";
 import { ConversationSessionService } from "@/lib/services/conversation-session-service";
 import type { ChatSession } from "@/lib/chat-types";
 import type { ConversationSummary } from "@/lib/conversation-types";
@@ -31,6 +32,7 @@ interface RealRow {
   conversation: ConversationSummary;
   active: boolean;
   remainingMs: number;
+  unread: boolean;
 }
 
 export default function ChatsPage() {
@@ -58,6 +60,10 @@ export default function ChatsPage() {
     conversations
       .getUserConversations(account.username, "fan")
       .then(async (list) => {
+        const unreadCounts = await getClientMessageRepository()
+          .getUnreadCounts(account.username)
+          .catch(() => []);
+        const unreadByConversation = new Set(unreadCounts.map((u) => u.conversationId));
         const rows = await Promise.all(
           list.map(async (conversation) => {
             const active = await sessionService.getActive(conversation.id);
@@ -65,6 +71,7 @@ export default function ChatsPage() {
               conversation,
               active: sessionService.isActive(active),
               remainingMs: sessionService.getRemainingMs(active),
+              unread: unreadByConversation.has(conversation.id),
             };
           })
         );
@@ -163,7 +170,7 @@ export default function ChatsPage() {
           />
         ) : (
           <div className="flex flex-col gap-2">
-            {realRows.map(({ conversation, active, remainingMs }) => (
+            {realRows.map(({ conversation, active, remainingMs, unread }) => (
               <ChatListItem
                 key={conversation.id}
                 creatorUsername={conversation.creatorUsername}
@@ -171,6 +178,7 @@ export default function ChatsPage() {
                 remainingMs={remainingMs}
                 lastMessagePreview={conversation.latestMessagePreview ?? undefined}
                 lastMessageAt={conversation.latestMessageAt ?? undefined}
+                unread={unread}
               />
             ))}
           </div>
