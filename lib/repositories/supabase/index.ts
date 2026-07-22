@@ -11,7 +11,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ProfileRepository } from "@/lib/repositories/profile-repository";
 import type { CreatorRepository } from "@/lib/repositories/creator-repository";
-import type { ConversationRepository } from "@/lib/repositories/conversation-repository";
 import type { MessageRepository } from "@/lib/repositories/message-repository";
 import type { PurchaseRepository } from "@/lib/repositories/purchase-repository";
 import type { NotificationRepository } from "@/lib/repositories/notification-repository";
@@ -130,18 +129,6 @@ export const supabaseCreatorRepository: CreatorRepository = {
     const { data, error } = await query.select("*").single();
     if (error) throw error;
     return data;
-  },
-};
-
-export const supabaseConversationRepository: ConversationRepository = {
-  async listForFan() {
-    notImplemented("supabaseConversationRepository.listForFan");
-  },
-  async listForCreator() {
-    notImplemented("supabaseConversationRepository.listForCreator");
-  },
-  async getById() {
-    notImplemented("supabaseConversationRepository.getById");
   },
 };
 

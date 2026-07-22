@@ -8,18 +8,19 @@
  * `isSupabaseConfigured()` itself — that check belongs here only, so it's
  * never scattered across components.
  *
- * Phase 2.1A: every Supabase repository is a placeholder that throws (see
- * lib/repositories/supabase/index.ts), so this factory currently always
- * resolves to the demo implementations regardless of environment — the
- * existing local demo experience is completely unaffected. Flipping a
- * repository over to Supabase later is a one-line change in this file.
+ * Every Supabase repository not yet genuinely implemented is a placeholder
+ * that throws (see lib/repositories/supabase/index.ts), so this factory
+ * falls back to demo for those regardless of environment. Flipping a
+ * repository over to Supabase once it's implemented is a one-line change
+ * in this file — profiles, creators, conversations, and conversation
+ * sessions have already made that flip.
  */
 
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 import { demoProfileRepository } from "@/lib/repositories/demo/demo-profile-repository";
 import { demoCreatorRepository } from "@/lib/repositories/demo/demo-creator-repository";
-import { demoConversationRepository } from "@/lib/repositories/demo/demo-conversation-repository";
+import { demoConversationRepository, demoConversationSessionRepository } from "@/lib/repositories/demo/demo-conversation-engine";
 import { demoMessageRepository } from "@/lib/repositories/demo/demo-message-repository";
 import { demoPurchaseRepository } from "@/lib/repositories/demo/demo-purchase-repository";
 import { demoNotificationRepository } from "@/lib/repositories/demo/demo-notification-repository";
@@ -27,15 +28,19 @@ import { demoNotificationRepository } from "@/lib/repositories/demo/demo-notific
 import {
   supabaseProfileRepository,
   supabaseCreatorRepository,
-  supabaseConversationRepository,
   supabaseMessageRepository,
   supabasePurchaseRepository,
   supabaseNotificationRepository,
 } from "@/lib/repositories/supabase";
+import {
+  supabaseConversationRepository,
+  supabaseConversationSessionRepository,
+} from "@/lib/repositories/supabase/conversation-repository-server";
 
 import type { ProfileRepository } from "@/lib/repositories/profile-repository";
 import type { CreatorRepository } from "@/lib/repositories/creator-repository";
 import type { ConversationRepository } from "@/lib/repositories/conversation-repository";
+import type { ConversationSessionRepository } from "@/lib/repositories/conversation-session-repository";
 import type { MessageRepository } from "@/lib/repositories/message-repository";
 import type { PurchaseRepository } from "@/lib/repositories/purchase-repository";
 import type { NotificationRepository } from "@/lib/repositories/notification-repository";
@@ -44,26 +49,22 @@ export interface Repositories {
   profiles: ProfileRepository;
   creators: CreatorRepository;
   conversations: ConversationRepository;
+  conversationSessions: ConversationSessionRepository;
   messages: MessageRepository;
   purchases: PurchaseRepository;
   notifications: NotificationRepository;
 }
 
-/**
- * Always returns demo repositories today (see note above). Once a given
- * Supabase repository is genuinely implemented, its line below flips to
- * `useSupabase ? supabaseX : demoX`.
- */
 export function getRepositories(): Repositories {
   const useSupabase = isSupabaseConfigured();
 
   return {
-    // Genuinely implemented in Phase 2.2A — safe to flip now that
-    // Supabase auth actually needs real profile/creator data.
     profiles: useSupabase ? supabaseProfileRepository : demoProfileRepository,
     creators: useSupabase ? supabaseCreatorRepository : demoCreatorRepository,
+    // Launch Sprint L3 — genuinely implemented.
+    conversations: useSupabase ? supabaseConversationRepository : demoConversationRepository,
+    conversationSessions: useSupabase ? supabaseConversationSessionRepository : demoConversationSessionRepository,
     // Still unimplemented stubs — stay on demo until each is built out.
-    conversations: demoConversationRepository,
     messages: demoMessageRepository,
     purchases: demoPurchaseRepository,
     notifications: demoNotificationRepository,
@@ -76,6 +77,7 @@ export {
   supabaseProfileRepository,
   supabaseCreatorRepository,
   supabaseConversationRepository,
+  supabaseConversationSessionRepository,
   supabaseMessageRepository,
   supabasePurchaseRepository,
   supabaseNotificationRepository,

@@ -15,6 +15,7 @@ export type UserRole = "fan" | "creator" | "moderator" | "admin" | "super_admin"
 export type ProfileStatus = "active" | "suspended" | "banned" | "deleted";
 export type CreatorStatus = "draft" | "pending_review" | "approved" | "rejected" | "suspended";
 export type AvailabilityStatus = "available" | "busy" | "offline";
+export type ConversationSessionStatus = "pending" | "active" | "expired" | "refunded";
 
 export interface Database {
   public: {
@@ -165,6 +166,50 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["creator_favourites"]["Insert"]>;
         Relationships: [];
       };
+      conversations: {
+        Row: {
+          id: string;
+          creator_id: string;
+          fan_id: string;
+          latest_message_at: string | null;
+          latest_message_preview: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          creator_id: string;
+          fan_id: string;
+          latest_message_at?: string | null;
+          latest_message_preview?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["conversations"]["Insert"]>;
+        Relationships: [];
+      };
+      conversation_sessions: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          activated_at: string;
+          expires_at: string;
+          status: ConversationSessionStatus;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          activated_at?: string;
+          expires_at: string;
+          status?: ConversationSessionStatus;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["conversation_sessions"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       public_creator_profiles: {
@@ -208,12 +253,17 @@ export interface Database {
         Args: Record<string, never>;
         Returns: boolean;
       };
+      expire_conversation_sessions: {
+        Args: { p_conversation_id: string };
+        Returns: undefined;
+      };
     };
     Enums: {
       user_role: UserRole;
       profile_status: ProfileStatus;
       creator_status: CreatorStatus;
       availability_status: AvailabilityStatus;
+      conversation_session_status: ConversationSessionStatus;
     };
     CompositeTypes: Record<string, never>;
   };
