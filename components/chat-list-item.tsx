@@ -5,32 +5,46 @@ import { Camera, Video } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn, formatRelativeShort, formatRemaining } from "@/lib/utils";
-import { getMediaPurchasesForSession, getRemainingMs, isSessionActive } from "@/lib/chat";
-import type { ChatMessage, ChatSession } from "@/lib/chat-types";
 
+/**
+ * Pure/presentational — Launch Sprint L3 refactor. Previously derived
+ * `active`/`remainingMs`/pending-media internally via demo-only lookups
+ * (lib/chat.ts), which made this component unusable for real Supabase
+ * conversations. Callers now compute those values themselves (demo mode:
+ * via lib/chat.ts, same as before; real mode: via
+ * ConversationSessionService) and pass them in — the rendered output is
+ * unchanged either way.
+ */
 export interface ChatListItemProps {
-  session: ChatSession;
+  creatorUsername: string;
   creatorAvatarUrl?: string;
-  lastMessage?: ChatMessage;
+  active: boolean;
+  remainingMs: number;
+  lastMessagePreview?: string;
+  lastMessageAt?: string;
   unread?: boolean;
+  pendingPhoto?: boolean;
+  pendingVideo?: boolean;
 }
 
-export function ChatListItem({ session, creatorAvatarUrl, lastMessage, unread }: ChatListItemProps) {
-  const active = isSessionActive(session);
-  const pendingPhoto = getMediaPurchasesForSession(session.id).some(
-    (p) => p.mediaType === "photo" && p.status === "requested"
-  );
-  const pendingVideo = getMediaPurchasesForSession(session.id).some(
-    (p) => p.mediaType === "video" && p.status === "requested"
-  );
-
+export function ChatListItem({
+  creatorUsername,
+  creatorAvatarUrl,
+  active,
+  remainingMs,
+  lastMessagePreview,
+  lastMessageAt,
+  unread,
+  pendingPhoto,
+  pendingVideo,
+}: ChatListItemProps) {
   return (
     <Link
-      href={`/chats/${session.creatorUsername}`}
+      href={`/chats/${creatorUsername}`}
       className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3 transition-colors duration-fast ease-signal hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <span className="relative inline-flex shrink-0">
-        <Avatar src={creatorAvatarUrl} alt={session.creatorUsername} size="lg" online={active} />
+        <Avatar src={creatorAvatarUrl} alt={creatorUsername} size="lg" online={active} />
         {unread && (
           <span
             className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald ring-2 ring-surface"
@@ -42,7 +56,7 @@ export function ChatListItem({ session, creatorAvatarUrl, lastMessage, unread }:
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex items-center justify-between gap-2">
           <span className={cn("truncate leading-tight", unread ? "font-semibold" : "font-medium")}>
-            @{session.creatorUsername}
+            @{creatorUsername}
           </span>
           <span
             className={cn(
@@ -50,15 +64,15 @@ export function ChatListItem({ session, creatorAvatarUrl, lastMessage, unread }:
               active ? "text-emerald" : "text-text-muted"
             )}
           >
-            {active ? formatRemaining(getRemainingMs(session)) : "Expired"}
+            {active ? formatRemaining(remainingMs) : "Expired"}
           </span>
         </div>
         <p className={cn("truncate text-sm", unread ? "text-text-primary" : "text-text-secondary")}>
-          {lastMessage ? lastMessage.body : "No messages yet"}
+          {lastMessagePreview ? lastMessagePreview : "No messages yet"}
         </p>
         <div className="flex items-center gap-2">
-          {lastMessage && (
-            <span className="text-[11px] text-text-muted">{formatRelativeShort(lastMessage.sentAt)}</span>
+          {lastMessageAt && (
+            <span className="text-[11px] text-text-muted">{formatRelativeShort(lastMessageAt)}</span>
           )}
           {pendingPhoto && (
             <span
