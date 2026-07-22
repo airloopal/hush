@@ -299,3 +299,28 @@ row (forced to `status = 'draft'` by
 action (see § 9–11) — this sprint doesn't yet add that promotion step to
 any UI; it remains a direct SQL/admin-tooling action, matching the
 "do not implement admin UI" boundary for this phase.
+
+## 12. Realtime configuration (Launch Sprint L4)
+
+Realtime messaging needs two things enabled in your Supabase project,
+neither of which is set by a migration (they're project-level toggles,
+not schema):
+
+1. **Enable Realtime for the `messages` table** — dashboard →
+   Database → Replication → toggle `public.messages` on. Without this,
+   `subscribeToConversationMessages()` (`lib/realtime/message-channel.ts`)
+   will connect but never receive the `postgres_changes` INSERT events
+   the chat relies on.
+2. **Broadcast is enabled by default** for typing indicators
+   (`lib/realtime/typing-channel.ts`) — no table replication toggle is
+   needed for broadcast-only channels, since nothing is written to a
+   table.
+
+No other project-level Realtime configuration is required — channel
+authorization for `postgres_changes` events is enforced by the same RLS
+policies already covering `public.messages` (a subscriber only receives
+INSERT events for rows they could `SELECT`), so there's no separate
+Realtime-specific security setting to configure.
+
+See `docs/realtime-messaging.md` for the full realtime/typing/presence
+architecture.
