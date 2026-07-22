@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/use-toast";
 import { unlockChatSession } from "@/lib/chat";
+import { isDemoMode } from "@/lib/auth/mode";
 import type { ChatSession } from "@/lib/chat-types";
 
 export interface UnlockChatModalProps {
@@ -32,7 +33,11 @@ export interface UnlockChatModalProps {
   onUnlocked: (session: ChatSession) => void;
 }
 
-/** Confirmation modal for paying to start or renew a 24-hour chat session. Mock processing only — no card details are collected. */
+/** Confirmation modal for paying to start or renew a 24-hour chat session.
+ * Demo mode: mock processing only, unchanged from before this sprint — no
+ * card details are ever collected. Real mode: creates a real checkout
+ * (§3) and redirects to hosted checkout; nothing about price or access is
+ * ever decided client-side either way. */
 export function UnlockChatModal({
   creatorId,
   creatorUsername,
@@ -48,10 +53,30 @@ export function UnlockChatModal({
   const { toast } = useToast();
   const [open, setOpen] = React.useState(false);
   const [processing, setProcessing] = React.useState(false);
+  // One stable key per checkout attempt (regenerated only when the modal
+  // is reopened) — sent as the idempotency header so repeated clicks
+  // while a request is already in flight, or a retried request after a
+  // network blip, can never create two payment rows (§3, §6).
+  const idempotencyKeyRef = React.useRef<string>(crypto.randomUUID());
+
+  function handleOpenChange(next: boolean) {
+    if (next) idempotencyKeyRef.current = crypto.randomUUID();
+    setOpen(next);
+  }
 
   function handleConfirm() {
+    if (processing) return; // belt-and-suspenders alongside the disabled button below
+    if (isDemoMode()) {
+      handleDemoConfirm();
+    } else {
+      void handleRealConfirm();
+    }
+  }
+
+  function handleDemoConfirm() {
     setProcessing(true);
-    // Mock processing delay only — no real payment call.
+    // Mock processing delay only — no real payment call. Unchanged from
+    // before this sprint.
     window.setTimeout(() => {
       const session = unlockChatSession({ creatorId, creatorUsername, fanUsername, chatPrice });
       setProcessing(false);
@@ -83,8 +108,47 @@ export function UnlockChatModal({
     }, 400);
   }
 
+  async function handleRealConfirm() {
+    setProcessing(true);
+    try {
+      const res = await fetch("/api/payments/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-idempotency-key": idempotencyKeyRef.current },
+        body: JSON.stringify({ creatorUsername }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast({
+          title: "Couldn't start checkout",
+          description: data?.error ?? "Please try again in a moment.",
+          variant: "danger",
+        });
+        return;
+      }
+
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+
+      // No checkoutUrl means the payment already resolved (e.g. an
+      // already-paid idempotent retry) — send the fan straight to the
+      // trusted return-page flow rather than assuming success locally.
+      window.location.href = `/payments/return?payment=${data.paymentId}`;
+    } catch {
+      toast({
+        title: "Couldn't start checkout",
+        description: "Check your connection and try again.",
+        variant: "danger",
+      });
+    } finally {
+      setProcessing(false);
+    }
+  }
+
   return (
-    <Modal open={open} onOpenChange={setOpen}>
+    <Modal open={open} onOpenChange={handleOpenChange}>
       <ModalTrigger asChild>
         <Button disabled={disabled}>{triggerLabel}</Button>
       </ModalTrigger>
@@ -127,7 +191,9 @@ export function UnlockChatModal({
         </div>
 
         <p className="text-xs text-text-muted">
-          This is a prototype — no card details are collected and no real payment is made.
+          {isDemoMode()
+            ? "This is a prototype — no card details are collected and no real payment is made."
+            : "You'll be redirected to secure hosted checkout. Hush never collects or stores your card details."}
         </p>
 
         <ModalFooter>

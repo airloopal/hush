@@ -11,7 +11,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useRequireAccount } from "@/lib/use-account-guard";
+import { isDemoMode } from "@/lib/auth/mode";
 import { getPurchaseHistoryForFan, groupPurchasesByMonth, summarizePurchases } from "@/lib/purchases";
+import { getFanPaymentHistoryBrowser } from "@/lib/repositories/supabase/payment-repository-browser";
 import type { PurchaseRecord } from "@/lib/purchases";
 
 const TYPE_ICON = { chat: MessageCircle, photo: Camera, video: Video } as const;
@@ -20,11 +22,42 @@ const TYPE_LABEL = { chat: "24-hour chat", photo: "Live photo", video: "Live vid
 export default function PurchaseHistoryPage() {
   const { ready, account } = useRequireAccount();
   const [records, setRecords] = React.useState<PurchaseRecord[] | null>(null);
+  const demoMode = isDemoMode();
 
   React.useEffect(() => {
     if (!ready || !account || account.role !== "fan") return;
-    setRecords(getPurchaseHistoryForFan(account.username));
-  }, [ready, account]);
+
+    if (demoMode) {
+      setRecords(getPurchaseHistoryForFan(account.username));
+      return;
+    }
+
+    let cancelled = false;
+    getFanPaymentHistoryBrowser()
+      .then((payments) => {
+        if (cancelled) return;
+        // §9: a lean history view — the real payment_attempts table has
+        // richer status detail than the existing PurchaseRecord shape
+        // needs to show; only "paid" purchases count as real purchase
+        // history here, matching the fan-facing framing of this page.
+        const asPurchaseRecords: PurchaseRecord[] = payments
+          .filter((p) => p.internalStatus === "paid")
+          .map((p) => ({
+            id: p.id,
+            type: "chat",
+            creatorUsername: p.creatorUsername,
+            amount: p.amountMinor / 100,
+            transactionRef: p.providerReference ?? p.id,
+            date: p.paidAt ?? p.createdAt,
+            status: "Completed",
+          }));
+        setRecords(asPurchaseRecords);
+      })
+      .catch(() => setRecords([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, account, demoMode]);
 
   if (!ready || !account) return null;
 
