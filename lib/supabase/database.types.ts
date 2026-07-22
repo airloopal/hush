@@ -16,6 +16,7 @@ export type ProfileStatus = "active" | "suspended" | "banned" | "deleted";
 export type CreatorStatus = "draft" | "pending_review" | "approved" | "rejected" | "suspended";
 export type AvailabilityStatus = "available" | "busy" | "offline";
 export type ConversationSessionStatus = "pending" | "active" | "expired" | "refunded";
+export type PaymentStatus = "pending" | "processing" | "paid" | "failed" | "cancelled" | "expired";
 
 export interface Database {
   public: {
@@ -268,6 +269,50 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["user_presence"]["Insert"]>;
         Relationships: [];
       };
+      payment_attempts: {
+        Row: {
+          id: string;
+          fan_id: string;
+          creator_id: string;
+          conversation_id: string;
+          amount_minor: number;
+          currency: string;
+          product_type: string;
+          internal_status: PaymentStatus;
+          provider: string;
+          provider_reference: string | null;
+          provider_status: string | null;
+          client_idempotency_key: string;
+          provider_event_id: string | null;
+          paid_at: string | null;
+          failure_reason: string | null;
+          activated_session_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          fan_id: string;
+          creator_id: string;
+          conversation_id: string;
+          amount_minor?: number;
+          currency?: string;
+          product_type?: string;
+          internal_status?: PaymentStatus;
+          provider?: string;
+          provider_reference?: string | null;
+          provider_status?: string | null;
+          client_idempotency_key: string;
+          provider_event_id?: string | null;
+          paid_at?: string | null;
+          failure_reason?: string | null;
+          activated_session_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["payment_attempts"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       public_creator_profiles: {
@@ -302,6 +347,37 @@ export interface Database {
           category_slug: string;
           category_name: string;
           is_primary: boolean;
+        };
+        Relationships: [];
+      };
+      fan_payment_history: {
+        Row: {
+          id: string;
+          creator_id: string;
+          conversation_id: string;
+          amount_minor: number;
+          currency: string;
+          product_type: string;
+          internal_status: PaymentStatus;
+          provider_reference: string | null;
+          provider_status: string | null;
+          paid_at: string | null;
+          failure_reason: string | null;
+          created_at: string;
+        };
+        Relationships: [];
+      };
+      creator_payment_summary: {
+        Row: {
+          id: string;
+          fan_id: string;
+          conversation_id: string;
+          amount_minor: number;
+          currency: string;
+          product_type: string;
+          internal_status: PaymentStatus;
+          paid_at: string | null;
+          created_at: string;
         };
         Relationships: [];
       };

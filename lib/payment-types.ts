@@ -1,0 +1,49 @@
+export type PaymentStatus = "pending" | "processing" | "paid" | "failed" | "cancelled" | "expired";
+
+export interface PaymentAttempt {
+  id: string;
+  fanId: string;
+  creatorId: string;
+  conversationId: string;
+  amountMinor: number;
+  currency: string;
+  productType: "chat_day_pass";
+  internalStatus: PaymentStatus;
+  provider: string;
+  providerReference: string | null;
+  providerStatus: string | null;
+  paidAt: string | null;
+  failureReason: string | null;
+  activatedSessionId: string | null;
+  createdAt: string;
+}
+
+/** What a fan sees in their purchase history — see the fan_payment_history view. */
+export interface FanPaymentRecord {
+  id: string;
+  creatorId: string;
+  creatorUsername?: string;
+  conversationId: string;
+  amountMinor: number;
+  currency: string;
+  productType: "chat_day_pass";
+  internalStatus: PaymentStatus;
+  providerReference: string | null;
+  paidAt: string | null;
+  failureReason: string | null;
+  createdAt: string;
+}
+
+/** What a creator sees for their own earnings context — see the
+ * creator_payment_summary view. Deliberately narrower than FanPaymentRecord. */
+export interface CreatorPaymentSummaryRecord {
+  id: string;
+  fanId: string;
+  conversationId: string;
+  amountMinor: number;
+  currency: string;
+  productType: "chat_day_pass";
+  internalStatus: PaymentStatus;
+  paidAt: string | null;
+  createdAt: string;
+}
