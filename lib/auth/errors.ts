@@ -68,3 +68,51 @@ function extractMessage(error: unknown): string {
   }
   return "";
 }
+
+// ---------------------------------------------------------------------------
+// Launch Sprint L4 — messaging-specific error classification. Same
+// never-expose-raw-errors principle as classifySupabaseAuthError above.
+// ---------------------------------------------------------------------------
+
+export type MessagingErrorCode =
+  | "session-expired"
+  | "unauthorized-conversation"
+  | "message-too-long"
+  | "empty-message"
+  | "rate-limited"
+  | "network-failure"
+  | "unknown";
+
+const MESSAGING_ERROR_PATTERNS: Array<[RegExp, MessagingErrorCode]> = [
+  [/chat access has expired/i, "session-expired"],
+  [/not a participant/i, "unauthorized-conversation"],
+  [/only a participant/i, "unauthorized-conversation"],
+  [/sending messages too quickly/i, "rate-limited"],
+  [/creator is not currently approved/i, "unauthorized-conversation"],
+  [/account must be active/i, "unauthorized-conversation"],
+  [/fetch failed|network/i, "network-failure"],
+];
+
+const MESSAGING_ERROR_MESSAGES: Record<MessagingErrorCode, string> = {
+  "session-expired": "Chat access has expired. Renew to keep messaging.",
+  "unauthorized-conversation": "You don't have access to send messages in this conversation.",
+  "message-too-long": "That message is too long.",
+  "empty-message": "Type a message before sending.",
+  "rate-limited": "You're sending messages too quickly. Please wait a moment.",
+  "network-failure": "Couldn't reach the server. Check your connection and try again.",
+  unknown: "Couldn't send that message. Please try again.",
+};
+
+/** Same never-expose-raw-errors principle as classifySupabaseAuthError,
+ * for the messaging-specific failures a send/read/presence call can hit. */
+export function classifyMessagingError(error: unknown): MessagingErrorCode {
+  const message = error instanceof Error ? error.message : String(error);
+  for (const [pattern, code] of MESSAGING_ERROR_PATTERNS) {
+    if (pattern.test(message)) return code;
+  }
+  return "unknown";
+}
+
+export function messagingErrorMessage(code: MessagingErrorCode): string {
+  return MESSAGING_ERROR_MESSAGES[code];
+}

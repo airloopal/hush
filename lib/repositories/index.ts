@@ -28,10 +28,10 @@ import { demoNotificationRepository } from "@/lib/repositories/demo/demo-notific
 import {
   supabaseProfileRepository,
   supabaseCreatorRepository,
-  supabaseMessageRepository,
   supabasePurchaseRepository,
   supabaseNotificationRepository,
 } from "@/lib/repositories/supabase";
+import { supabaseMessageRepository } from "@/lib/repositories/supabase/message-repository-server";
 import {
   supabaseConversationRepository,
   supabaseConversationSessionRepository,
@@ -65,7 +65,7 @@ export function getRepositories(): Repositories {
     conversations: useSupabase ? supabaseConversationRepository : demoConversationRepository,
     conversationSessions: useSupabase ? supabaseConversationSessionRepository : demoConversationSessionRepository,
     // Still unimplemented stubs — stay on demo until each is built out.
-    messages: demoMessageRepository,
+    messages: useSupabase ? supabaseMessageRepository : demoMessageRepository,
     purchases: demoPurchaseRepository,
     notifications: demoNotificationRepository,
   };
