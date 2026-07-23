@@ -313,6 +313,32 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["payment_attempts"]["Insert"]>;
         Relationships: [];
       };
+      payment_webhook_events: {
+        Row: {
+          id: string;
+          provider: string;
+          received_at: string;
+          signature_valid: boolean;
+          provider_event_id: string | null;
+          payment_attempt_id: string | null;
+          outcome: string;
+          body_sha256: string;
+          header_names: string | null;
+        };
+        Insert: {
+          id?: string;
+          provider: string;
+          received_at?: string;
+          signature_valid: boolean;
+          provider_event_id?: string | null;
+          payment_attempt_id?: string | null;
+          outcome: string;
+          body_sha256: string;
+          header_names?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["payment_webhook_events"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       public_creator_profiles: {
