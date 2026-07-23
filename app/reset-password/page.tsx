@@ -55,6 +55,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="flex w-full max-w-md flex-col gap-6">
+        <h1 className="sr-only">Reset password — Hush</h1>
         <Link href="/" className="flex items-center justify-center gap-2 font-semibold tracking-tight">
           <span className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald text-emerald-foreground">
             <MessageCircle className="h-4 w-4" />

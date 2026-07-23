@@ -91,6 +91,7 @@ export default function SignUpPage() {
   if (submitted) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <h1 className="sr-only">Check your email — Hush</h1>
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-xl">Check your email</CardTitle>
@@ -112,6 +113,7 @@ export default function SignUpPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <div className="flex w-full max-w-md flex-col gap-6">
+        <h1 className="sr-only">Create your account — Hush</h1>
         <Link href="/" className="flex items-center justify-center gap-2 font-semibold tracking-tight">
           <span className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald text-emerald-foreground">
             <MessageCircle className="h-4 w-4" />

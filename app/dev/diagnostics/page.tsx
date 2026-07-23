@@ -74,6 +74,7 @@ export default async function DiagnosticsPage() {
 function DiagnosticsShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+      <h1 className="sr-only">Go-live diagnostics — Hush</h1>
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle className="text-lg">Go-live diagnostics</CardTitle>

@@ -120,6 +120,7 @@ function LoginPageContent() {
 
         {/* Right: login form + demo access */}
         <div className="mx-auto flex w-full max-w-md flex-col gap-8">
+          <h1 className="sr-only lg:hidden">Log in to Hush</h1>
           <div className="flex items-center justify-between gap-2 lg:hidden">
             <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
               <span className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald text-emerald-foreground">

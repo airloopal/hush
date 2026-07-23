@@ -160,6 +160,7 @@ export default function PaymentReturnPage() {
     <div className="min-h-screen bg-background pb-24 md:pb-0">
       <NavigationBar activeHref="/discover" />
       <main className="container flex flex-col items-center justify-center gap-6 py-16">
+        <h1 className="sr-only">Payment status — Hush</h1>
         <React.Suspense fallback={null}>
           <PaymentReturnContent />
         </React.Suspense>
