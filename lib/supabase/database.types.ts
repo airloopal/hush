@@ -11,12 +11,23 @@
  * trusting this for anything beyond local development.
  */
 
-export type UserRole = "fan" | "creator" | "moderator" | "admin" | "super_admin";
+export type UserRole = "fan" | "creator" | "support" | "moderator" | "admin" | "super_admin";
 export type ProfileStatus = "active" | "suspended" | "banned" | "deleted";
 export type CreatorStatus = "draft" | "pending_review" | "approved" | "rejected" | "suspended";
 export type AvailabilityStatus = "available" | "busy" | "offline";
 export type ConversationSessionStatus = "pending" | "active" | "expired" | "refunded";
 export type PaymentStatus = "pending" | "processing" | "paid" | "failed" | "cancelled" | "expired";
+export type ModerationReportType = "user_report" | "creator_report" | "payment_dispute" | "abuse_report" | "spam_report";
+export type ModerationReportStatus = "open" | "assigned" | "resolved" | "dismissed";
+export type LedgerEntryType =
+  | "chat_earning"
+  | "platform_commission"
+  | "refund"
+  | "reversal"
+  | "payout_deduction"
+  | "manual_adjustment";
+export type LedgerSettlementStatus = "pending" | "available";
+export type PayoutRequestStatus = "pending" | "approved" | "processing" | "paid" | "rejected" | "cancelled";
 
 export interface Database {
   public: {
@@ -107,6 +118,9 @@ export interface Database {
           joined_creator_at: string;
           approved_at: string | null;
           approved_by: string | null;
+          is_verified: boolean;
+          commission_tier_id: string | null;
+          commission_rate_bps: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -131,6 +145,9 @@ export interface Database {
           joined_creator_at?: string;
           approved_at?: string | null;
           approved_by?: string | null;
+          is_verified?: boolean;
+          commission_tier_id?: string | null;
+          commission_rate_bps?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -339,8 +356,194 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["payment_webhook_events"]["Insert"]>;
         Relationships: [];
       };
+      admin_audit_log: {
+        Row: {
+          id: string;
+          actor_id: string;
+          action: string;
+          target_type: string;
+          target_id: string | null;
+          metadata: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          actor_id: string;
+          action: string;
+          target_type: string;
+          target_id?: string | null;
+          metadata?: Record<string, unknown>;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["admin_audit_log"]["Insert"]>;
+        Relationships: [];
+      };
+      moderation_reports: {
+        Row: {
+          id: string;
+          report_type: ModerationReportType;
+          reporter_id: string | null;
+          reported_user_id: string | null;
+          reported_creator_id: string | null;
+          payment_attempt_id: string | null;
+          conversation_id: string | null;
+          reason: string;
+          status: ModerationReportStatus;
+          assigned_to: string | null;
+          notes: string | null;
+          created_at: string;
+          resolved_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          report_type: ModerationReportType;
+          reporter_id?: string | null;
+          reported_user_id?: string | null;
+          reported_creator_id?: string | null;
+          payment_attempt_id?: string | null;
+          conversation_id?: string | null;
+          reason: string;
+          status?: ModerationReportStatus;
+          assigned_to?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          resolved_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["moderation_reports"]["Insert"]>;
+        Relationships: [];
+      };
+      user_blocks: {
+        Row: {
+          id: string;
+          blocker_id: string;
+          blocked_id: string;
+          reason: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          blocker_id: string;
+          blocked_id: string;
+          reason?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_blocks"]["Insert"]>;
+        Relationships: [];
+      };
+      platform_settings: {
+        Row: { key: string; value: unknown; updated_at: string; updated_by: string | null };
+        Insert: { key: string; value: unknown; updated_at?: string; updated_by?: string | null };
+        Update: Partial<Database["public"]["Tables"]["platform_settings"]["Insert"]>;
+        Relationships: [];
+      };
+      creator_commission_tiers: {
+        Row: { id: string; name: string; commission_bps: number; created_at: string };
+        Insert: { id?: string; name: string; commission_bps: number; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["creator_commission_tiers"]["Insert"]>;
+        Relationships: [];
+      };
+      creator_ledger_entries: {
+        Row: {
+          id: string;
+          creator_id: string;
+          entry_type: LedgerEntryType;
+          source_payment_id: string | null;
+          source_conversation_id: string | null;
+          source_session_id: string | null;
+          gross_amount_minor: number;
+          platform_fee_minor: number;
+          creator_net_minor: number;
+          currency: string;
+          commission_rate_bps: number | null;
+          settlement_status: LedgerSettlementStatus;
+          payout_id: string | null;
+          reverses_entry_id: string | null;
+          metadata: Record<string, unknown>;
+          reference: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          creator_id: string;
+          entry_type: LedgerEntryType;
+          source_payment_id?: string | null;
+          source_conversation_id?: string | null;
+          source_session_id?: string | null;
+          gross_amount_minor?: number;
+          platform_fee_minor?: number;
+          creator_net_minor: number;
+          currency: string;
+          commission_rate_bps?: number | null;
+          settlement_status?: LedgerSettlementStatus;
+          payout_id?: string | null;
+          reverses_entry_id?: string | null;
+          metadata?: Record<string, unknown>;
+          reference?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["creator_ledger_entries"]["Insert"]>;
+        Relationships: [];
+      };
+      creator_payout_destinations: {
+        Row: { id: string; creator_id: string; label: string; masked_reference: string | null; is_default: boolean; created_at: string };
+        Insert: {
+          id?: string;
+          creator_id: string;
+          label: string;
+          masked_reference?: string | null;
+          is_default?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["creator_payout_destinations"]["Insert"]>;
+        Relationships: [];
+      };
+      creator_payout_requests: {
+        Row: {
+          id: string;
+          creator_id: string;
+          amount_minor: number;
+          currency: string;
+          status: PayoutRequestStatus;
+          destination_id: string | null;
+          requested_at: string;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          completed_at: string | null;
+          admin_notes: string | null;
+        };
+        Insert: {
+          id?: string;
+          creator_id: string;
+          amount_minor: number;
+          currency: string;
+          status?: PayoutRequestStatus;
+          destination_id?: string | null;
+          requested_at?: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          completed_at?: string | null;
+          admin_notes?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["creator_payout_requests"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
+      creator_balances: {
+        Row: {
+          creator_id: string;
+          currency: string;
+          pending_balance_minor: number;
+          available_balance_minor: number;
+          paid_out_minor: number;
+          lifetime_gross_minor: number;
+          lifetime_creator_earnings_minor: number;
+          lifetime_platform_fees_minor: number;
+        };
+        Relationships: [];
+      };
       public_creator_profiles: {
         Row: {
           user_id: string;
@@ -413,6 +616,22 @@ export interface Database {
         Args: Record<string, never>;
         Returns: boolean;
       };
+      is_staff: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      is_privileged_staff: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      is_super_admin: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      log_admin_action: {
+        Args: { p_action: string; p_target_type: string; p_target_id?: string | null; p_metadata?: Record<string, unknown> };
+        Returns: string;
+      };
       expire_conversation_sessions: {
         Args: { p_conversation_id: string };
         Returns: undefined;
@@ -424,6 +643,38 @@ export interface Database {
       mark_conversation_read: {
         Args: { p_conversation_id: string; p_message_id?: string | null };
         Returns: undefined;
+      };
+      settle_matured_ledger_entries: {
+        Args: Record<string, never>;
+        Returns: undefined;
+      };
+      request_payout: {
+        Args: { p_amount_minor: number; p_currency: string; p_destination_id?: string | null };
+        Returns: string;
+      };
+      cancel_payout_request: {
+        Args: { p_payout_id: string };
+        Returns: undefined;
+      };
+      approve_payout: {
+        Args: { p_payout_id: string; p_notes?: string | null };
+        Returns: undefined;
+      };
+      reject_payout: {
+        Args: { p_payout_id: string; p_reason: string };
+        Returns: undefined;
+      };
+      mark_payout_processing: {
+        Args: { p_payout_id: string };
+        Returns: undefined;
+      };
+      mark_payout_paid: {
+        Args: { p_payout_id: string; p_notes?: string | null };
+        Returns: undefined;
+      };
+      reverse_ledger_earning: {
+        Args: { p_ledger_entry_id: string; p_reason: string };
+        Returns: string;
       };
     };
     Enums: {
