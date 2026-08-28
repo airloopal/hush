@@ -3,6 +3,7 @@ import { createHash } from "crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createConversationSessionService } from "@/lib/services/conversation-session-service";
 import { supabaseConversationSessionRepository } from "@/lib/repositories/supabase/conversation-repository-server";
+import { recordChatEarning } from "@/lib/payments/earnings-service";
 import type { PaymentProviderAdapter } from "@/lib/payments/provider-adapter";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -139,6 +140,18 @@ export async function processPaymentWebhook(
     // delivery that somehow bypassed the provider_event_id check above
     // would still be rejected here, not silently create a second session.
     await admin.from("payment_attempts").update({ activated_session_id: session.id }).eq("id", payment.id);
+
+    // Sprint L8 — additive: record the creator's earning for this payment.
+    // Idempotent on its own terms (source_payment_id is unique per
+    // chat_earning entry) — does not alter anything about the existing
+    // session-activation flow above.
+    await recordChatEarning(admin, {
+      paymentAttemptId: payment.id,
+      creatorId: payment.creator_id,
+      amountMinor: payment.amount_minor,
+      currency: payment.currency,
+      conversationId: payment.conversation_id,
+    });
   }
 
   await logAuditEvent({
