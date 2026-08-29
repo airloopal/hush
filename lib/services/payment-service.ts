@@ -8,7 +8,8 @@ export type CreateCheckoutDenialReason =
   | "unauthenticated"
   | "account-not-active"
   | "creator-not-found"
-  | "creator-not-approved";
+  | "creator-not-approved"
+  | "blocked";
 
 export interface CreateCheckoutResult {
   ok: boolean;
@@ -23,6 +24,13 @@ export interface CreateCheckoutRequest {
   fanAccountActive: boolean;
   creatorId: string | null;
   creatorApproved: boolean;
+  /** True if either party has blocked the other (checked by the caller
+   * via the is_blocked_pair() RPC — see app/api/payments/checkout/route.ts).
+   * Checked explicitly here rather than relying only on
+   * protect_conversation_creation's own block check, because a renewal
+   * reuses an *existing* conversation (createConversation is get-or-create)
+   * without a new INSERT ever firing that trigger. */
+  isBlocked: boolean;
   clientIdempotencyKey: string;
   returnUrl: string;
 }
@@ -55,6 +63,7 @@ export class PaymentService {
     if (!request.fanAccountActive) return { ok: false, reason: "account-not-active" };
     if (!request.creatorId) return { ok: false, reason: "creator-not-found" };
     if (!request.creatorApproved) return { ok: false, reason: "creator-not-approved" };
+    if (request.isBlocked) return { ok: false, reason: "blocked" };
 
     try {
       const conversation = await this.conversations.createConversation(request.fanId, request.creatorId);
