@@ -11,9 +11,16 @@ export interface ChatComposerProps {
   disabled: boolean;
   disabledReason?: string;
   onSend: (body: string) => void;
+  /** Optional — called on every keystroke that changes the draft.
+   * Real-mode chat (Sprint L10) wires this to TypingChannel.notifyTyping();
+   * demo mode's existing call sites simply don't pass it. */
+  onTyping?: () => void;
+  /** Optional — called on submit, clearing the input, or blur, matching
+   * TypingChannel.notifyStopped()'s intended call sites. */
+  onStopTyping?: () => void;
 }
 
-export function ChatComposer({ disabled, disabledReason, onSend }: ChatComposerProps) {
+export function ChatComposer({ disabled, disabledReason, onSend, onTyping, onStopTyping }: ChatComposerProps) {
   const [value, setValue] = React.useState("");
   // Read once per mount — this is a local prototype preference, not a
   // rapidly-changing value, so a single read avoids re-reading storage on
@@ -25,6 +32,7 @@ export function ChatComposer({ disabled, disabledReason, onSend }: ChatComposerP
     if (!trimmed || disabled) return;
     onSend(trimmed.slice(0, MESSAGE_MAX_LENGTH));
     setValue("");
+    onStopTyping?.();
   }
 
   return (
@@ -41,7 +49,13 @@ export function ChatComposer({ disabled, disabledReason, onSend }: ChatComposerP
         <textarea
           id="chat-composer-input"
           value={value}
-          onChange={(event) => setValue(event.target.value.slice(0, MESSAGE_MAX_LENGTH))}
+          onChange={(event) => {
+            const next = event.target.value.slice(0, MESSAGE_MAX_LENGTH);
+            setValue(next);
+            if (next.length > 0) onTyping?.();
+            else onStopTyping?.();
+          }}
+          onBlur={() => onStopTyping?.()}
           onKeyDown={(event) => {
             if (event.key !== "Enter" || event.shiftKey) return;
             if (!enterToSend) return; // Enter inserts a newline instead
