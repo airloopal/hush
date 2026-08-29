@@ -21,6 +21,8 @@ import { DashboardCard } from "@/components/dashboard-card";
 import { EmptyState } from "@/components/empty-state";
 import { DashboardConversationRow } from "@/components/dashboard-conversation-row";
 import { MediaRequestCard } from "@/components/media-request-card";
+import { RealMediaRequestQueue } from "@/components/real-media-request-queue";
+import { isDemoMode } from "@/lib/auth/mode";
 import { DemoDataBadge } from "@/components/demo-data-badge";
 import { Button } from "@/components/ui/button";
 import { CategoryPill } from "@/components/ui/category-pill";
@@ -208,18 +210,22 @@ export default function DashboardPage() {
         {isCreator && (
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold">Pending Media Requests</h2>
-            {pendingRequests.length === 0 ? (
-              <EmptyState
-                icon={Camera}
-                title="No media requests"
-                description="Live photo and video requests from fans will show up here for you to fulfill."
-              />
+            {isDemoMode() ? (
+              pendingRequests.length === 0 ? (
+                <EmptyState
+                  icon={Camera}
+                  title="No media requests"
+                  description="Live photo and video requests from fans will show up here for you to fulfill."
+                />
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {pendingRequests.map((purchase) => (
+                    <MediaRequestCard key={purchase.id} purchase={purchase} onResolved={handleRequestResolved} />
+                  ))}
+                </div>
+              )
             ) : (
-              <div className="flex flex-col gap-2">
-                {pendingRequests.map((purchase) => (
-                  <MediaRequestCard key={purchase.id} purchase={purchase} onResolved={handleRequestResolved} />
-                ))}
-              </div>
+              <RealMediaRequestQueue />
             )}
           </section>
         )}
