@@ -747,6 +747,10 @@ export interface Database {
         Args: Record<string, never>;
         Returns: undefined;
       };
+      is_blocked_pair: {
+        Args: { p_user_a: string; p_user_b: string };
+        Returns: boolean;
+      };
     };
     Enums: {
       user_role: UserRole;

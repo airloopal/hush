@@ -81,6 +81,7 @@ export type MessagingErrorCode =
   | "empty-message"
   | "rate-limited"
   | "network-failure"
+  | "blocked"
   | "unknown";
 
 const MESSAGING_ERROR_PATTERNS: Array<[RegExp, MessagingErrorCode]> = [
@@ -90,6 +91,7 @@ const MESSAGING_ERROR_PATTERNS: Array<[RegExp, MessagingErrorCode]> = [
   [/sending messages too quickly/i, "rate-limited"],
   [/creator is not currently approved/i, "unauthorized-conversation"],
   [/account must be active/i, "unauthorized-conversation"],
+  [/one participant has blocked the other/i, "blocked"],
   [/fetch failed|network/i, "network-failure"],
 ];
 
@@ -100,6 +102,7 @@ const MESSAGING_ERROR_MESSAGES: Record<MessagingErrorCode, string> = {
   "empty-message": "Type a message before sending.",
   "rate-limited": "You're sending messages too quickly. Please wait a moment.",
   "network-failure": "Couldn't reach the server. Check your connection and try again.",
+  blocked: "You can't send messages in this conversation right now.",
   unknown: "Couldn't send that message. Please try again.",
 };
 
