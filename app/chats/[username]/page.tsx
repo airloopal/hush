@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { AlertCircle, MessagesSquare, ShieldAlert, UserX } from "lucide-react";
+import { AlertCircle, Loader2, MessagesSquare, ShieldAlert, UserX } from "lucide-react";
 
 import { NavigationBar } from "@/components/navigation-bar";
 import { BottomNav } from "@/components/bottom-nav";
@@ -19,11 +19,22 @@ import { UnlockChatModal } from "@/components/unlock-chat-modal";
 import { BuyMediaModal } from "@/components/buy-media-modal";
 import { SafetyMenu } from "@/components/safety-menu";
 import { MediaRequestCard } from "@/components/media-request-card";
+import { MediaRequestPanel } from "@/components/media-request-panel";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useRequireAccount } from "@/lib/use-account-guard";
 import { hasAdultAccess } from "@/lib/account";
 import { MOCK_CREATORS } from "@/lib/creators";
 import { findCreatorByUsername } from "@/lib/discovery";
+import { isDemoMode } from "@/lib/auth/mode";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getClientCreatorRepository } from "@/lib/repositories/creator-repository-client";
+import {
+  getClientConversationRepository,
+  getClientConversationSessionRepository,
+} from "@/lib/repositories/conversation-repository-client";
+import { ConversationSessionService } from "@/lib/services/conversation-session-service";
+import type { DiscoverCreator } from "@/lib/discover-types";
+import type { ConversationSummary } from "@/lib/conversation-types";
 import {
   addMessage,
   findLatestSession,
@@ -50,6 +61,20 @@ export default function ActiveChatPage() {
   const creatorUsername = isFanViewer ? params.username : account.username;
 
   const mockCreator = findCreatorByUsername(MOCK_CREATORS, creatorUsername);
+
+  // Sprint L9.1: real mode never has the target creator in MOCK_CREATORS,
+  // and needs its own async lookup/loading/not-found handling — branch
+  // out before any of the demo-only checks below, which don't apply.
+  if (!isDemoMode()) {
+    return (
+      <RealChatConversation
+        fanUsername={fanUsername}
+        creatorUsername={creatorUsername}
+        isFanViewer={isFanViewer}
+        viewerUsername={account.username}
+      />
+    );
+  }
 
   // Adult-content re-check happens here regardless of how this route was
   // reached (typed URL, back button, bookmark) — it does not rely on the
@@ -372,6 +397,215 @@ function ChatConversation({
 
         {session && (
           <ChatComposer disabled={composerDisabled} disabledReason={composerDisabledReason} onSend={handleSend} />
+        )}
+      </div>
+    </ChatShell>
+  );
+}
+
+/**
+ * Sprint L9.1 — minimal real-mode wiring for this page. The message
+ * thread itself still isn't wired for real mode (an explicit, documented
+ * decision since Sprints L3/L4 — this is the app's largest,
+ * safety-critical page, and extending it further here would reopen that
+ * same risk for a different sprint's scope). What *is* real here: session
+ * lookup/countdown (reusing ConversationSessionService, Sprint L3) and
+ * the full L9 live media request system (MediaRequestPanel) — this
+ * sprint's actual objective.
+ */
+function RealChatConversation({
+  fanUsername,
+  creatorUsername,
+  isFanViewer,
+  viewerUsername,
+}: {
+  fanUsername: string;
+  creatorUsername: string;
+  isFanViewer: boolean;
+  viewerUsername: string;
+}) {
+  const activeHref = isFanViewer ? "/chats" : "/dashboard";
+  const [fanId, setFanId] = React.useState<string | null | undefined>(undefined);
+  const [creator, setCreator] = React.useState<DiscoverCreator | null | undefined>(undefined);
+  const [conversation, setConversation] = React.useState<ConversationSummary | null | undefined>(undefined);
+  const [session, setSession] = React.useState<Awaited<ReturnType<ConversationSessionService["getActive"]>>>(null);
+  const [loadError, setLoadError] = React.useState(false);
+
+  const sessionService = React.useMemo(
+    () => new ConversationSessionService(getClientConversationSessionRepository()),
+    []
+  );
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setLoadError(false);
+
+    async function load() {
+      const {
+        data: { user },
+      } = await createSupabaseBrowserClient().auth.getUser();
+      if (!user) return;
+      if (cancelled) return;
+      setFanId(user.id);
+
+      const foundCreator = await getClientCreatorRepository().getCreatorByUsername(creatorUsername);
+      if (cancelled) return;
+      setCreator(foundCreator);
+      if (!foundCreator) return;
+
+      const fanUuid = isFanViewer ? user.id : null; // creator-viewer path isn't wired for real mode yet — see below
+      if (!fanUuid) return;
+
+      const foundConversation = await getClientConversationRepository().getConversationByUsers(fanUuid, foundCreator.id);
+      if (cancelled) return;
+      setConversation(foundConversation);
+      if (!foundConversation) return;
+
+      const activeSession = await sessionService.getActive(foundConversation.id);
+      if (cancelled) return;
+      setSession(activeSession);
+    }
+
+    load().catch(() => {
+      if (!cancelled) setLoadError(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [creatorUsername, isFanViewer, sessionService]);
+
+  if (!isFanViewer) {
+    // Creator-viewer real-mode inbox isn't wired yet (a separate, larger
+    // piece of work than this sprint's scope) — avoid rendering anything
+    // misleading rather than guess at it.
+    return (
+      <ChatShell activeHref={activeHref} username={viewerUsername}>
+        <EmptyState
+          icon={MessagesSquare}
+          title="Creator inbox is coming soon"
+          description="Manage media requests from your dashboard for now — the full conversation view for creators isn't available yet in production mode."
+          action={
+            <Button variant="outline" asChild>
+              <Link href="/dashboard">Go to dashboard</Link>
+            </Button>
+          }
+        />
+      </ChatShell>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <ChatShell activeHref={activeHref} username={viewerUsername}>
+        <EmptyState
+          icon={AlertCircle}
+          title="Couldn't load this conversation"
+          description="Something went wrong reaching the server. Check your connection and try again."
+          action={
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          }
+        />
+      </ChatShell>
+    );
+  }
+
+  if (fanId === undefined || creator === undefined || (creator && conversation === undefined)) {
+    return (
+      <ChatShell activeHref={activeHref} username={viewerUsername}>
+        <div className="flex flex-col items-center gap-3 py-16 text-text-secondary">
+          <Loader2 className="h-6 w-6 animate-spin" aria-hidden="true" />
+          <p className="text-sm">Loading…</p>
+        </div>
+      </ChatShell>
+    );
+  }
+
+  if (!creator) {
+    return (
+      <ChatShell activeHref={activeHref} username={viewerUsername}>
+        <EmptyState
+          icon={ShieldAlert}
+          title="Creator not found"
+          description="This username doesn't match any creator on Hush."
+          action={
+            <Button variant="outline" asChild>
+              <Link href="/discover">Back to Discover</Link>
+            </Button>
+          }
+        />
+      </ChatShell>
+    );
+  }
+
+  if (!conversation) {
+    return (
+      <ChatShell activeHref={activeHref} username={viewerUsername}>
+        <EmptyState
+          icon={MessagesSquare}
+          title="No chat with this creator yet"
+          description="Unlock 24-hour chat access from their profile to start a conversation."
+          action={
+            <Button variant="outline" asChild>
+              <Link href={`/creators/${creatorUsername}`}>View profile</Link>
+            </Button>
+          }
+        />
+      </ChatShell>
+    );
+  }
+
+  const sessionActive = sessionService.isActive(session);
+
+  return (
+    <ChatShell activeHref={activeHref} username={viewerUsername}>
+      <div className="flex h-[calc(100vh-8.5rem)] max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-surface md:h-[calc(100vh-6rem)]">
+        <header className="flex flex-wrap items-center gap-2 border-b border-border p-3">
+          <Avatar src={creator.avatarUrl} alt={creator.username} size="md" />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <h1 className="truncate font-semibold leading-tight">@{creator.username}</h1>
+          </div>
+          <div className="flex items-center gap-2" aria-live="polite">
+            {sessionActive && session ? (
+              <Countdown target={session.expiresAt} variant="compact" />
+            ) : (
+              <span className="font-mono-data text-xs text-danger">Expired</span>
+            )}
+            <StatusBadge status={sessionActive ? "live" : "expired"} />
+          </div>
+        </header>
+
+        <div className="relative flex-1 overflow-hidden">
+          <div className="flex h-full flex-col gap-1 overflow-y-auto p-4">
+            <EmptyState
+              icon={MessagesSquare}
+              title="Messaging is being finalized for production"
+              description="Your paid access and live media requests below are fully real — the message thread view is still being connected. Check back soon."
+            />
+          </div>
+        </div>
+
+        <MediaRequestPanel
+          conversationId={conversation.id}
+          sessionActive={sessionActive}
+          photoPriceLabel={`$${creator.photoPrice}`}
+          videoPriceLabel={`$${creator.videoPrice}`}
+        />
+
+        {!sessionActive && (
+          <div className="flex flex-col gap-2 border-t border-border bg-amber/5 p-3" aria-live="polite">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber" aria-hidden="true" />
+              <div className="flex flex-col gap-0.5">
+                <p className="text-sm font-medium text-text-primary">Chat access has ended</p>
+                <p className="text-xs text-text-secondary">Renew from this creator&apos;s profile to unlock another 24 hours.</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" asChild className="w-fit">
+              <Link href={`/creators/${creatorUsername}`}>View profile to renew</Link>
+            </Button>
+          </div>
         )}
       </div>
     </ChatShell>
