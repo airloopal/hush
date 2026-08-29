@@ -1,3 +1,5 @@
+export type PaymentProductType = "chat_day_pass" | "live_photo" | "live_video";
+
 export type PaymentStatus = "pending" | "processing" | "paid" | "failed" | "cancelled" | "expired";
 
 export interface PaymentAttempt {
@@ -7,7 +9,7 @@ export interface PaymentAttempt {
   conversationId: string;
   amountMinor: number;
   currency: string;
-  productType: "chat_day_pass";
+  productType: PaymentProductType;
   internalStatus: PaymentStatus;
   provider: string;
   providerReference: string | null;
@@ -26,7 +28,7 @@ export interface FanPaymentRecord {
   conversationId: string;
   amountMinor: number;
   currency: string;
-  productType: "chat_day_pass";
+  productType: PaymentProductType;
   internalStatus: PaymentStatus;
   providerReference: string | null;
   paidAt: string | null;
@@ -42,7 +44,7 @@ export interface CreatorPaymentSummaryRecord {
   conversationId: string;
   amountMinor: number;
   currency: string;
-  productType: "chat_day_pass";
+  productType: PaymentProductType;
   internalStatus: PaymentStatus;
   paidAt: string | null;
   createdAt: string;
