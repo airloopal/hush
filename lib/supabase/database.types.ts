@@ -28,6 +28,15 @@ export type LedgerEntryType =
   | "manual_adjustment";
 export type LedgerSettlementStatus = "pending" | "available";
 export type PayoutRequestStatus = "pending" | "approved" | "processing" | "paid" | "rejected" | "cancelled";
+export type MediaRequestType = "live_photo" | "live_video";
+export type MediaRequestStatus =
+  | "pending_payment"
+  | "pending_creator"
+  | "accepted"
+  | "fulfilled"
+  | "declined"
+  | "expired"
+  | "refund_required";
 
 export interface Database {
   public: {
@@ -529,6 +538,48 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["creator_payout_requests"]["Insert"]>;
         Relationships: [];
       };
+      media_requests: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          fan_id: string;
+          creator_id: string;
+          request_type: MediaRequestType;
+          amount_minor: number;
+          currency: string;
+          status: MediaRequestStatus;
+          payment_attempt_id: string | null;
+          storage_path: string | null;
+          requested_at: string;
+          responded_at: string | null;
+          fulfilled_at: string | null;
+          expires_at: string | null;
+          decline_reason: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          fan_id: string;
+          creator_id: string;
+          request_type: MediaRequestType;
+          amount_minor: number;
+          currency: string;
+          status?: MediaRequestStatus;
+          payment_attempt_id?: string | null;
+          storage_path?: string | null;
+          requested_at?: string;
+          responded_at?: string | null;
+          fulfilled_at?: string | null;
+          expires_at?: string | null;
+          decline_reason?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["media_requests"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       creator_balances: {
@@ -675,6 +726,26 @@ export interface Database {
       reverse_ledger_earning: {
         Args: { p_ledger_entry_id: string; p_reason: string };
         Returns: string;
+      };
+      create_media_request: {
+        Args: { p_conversation_id: string; p_request_type: MediaRequestType };
+        Returns: string;
+      };
+      accept_media_request: {
+        Args: { p_media_request_id: string };
+        Returns: undefined;
+      };
+      decline_media_request: {
+        Args: { p_media_request_id: string; p_reason?: string | null };
+        Returns: undefined;
+      };
+      fulfil_media_request: {
+        Args: { p_media_request_id: string; p_storage_path: string };
+        Returns: undefined;
+      };
+      expire_stale_media_requests: {
+        Args: Record<string, never>;
+        Returns: undefined;
       };
     };
     Enums: {

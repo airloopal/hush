@@ -132,7 +132,7 @@ export async function processPaymentWebhook(
     return { ok: false, reason: "database-failure" };
   }
 
-  if (event.status === "paid" && !payment.activated_session_id) {
+  if (event.status === "paid" && payment.product_type === "chat_day_pass" && !payment.activated_session_id) {
     const sessionService = createConversationSessionService(supabaseConversationSessionRepository);
     const session = await sessionService.activate(payment.conversation_id);
     // §11: protect_payment_single_activation (database trigger) guarantees
@@ -152,6 +152,33 @@ export async function processPaymentWebhook(
       currency: payment.currency,
       conversationId: payment.conversation_id,
     });
+  }
+
+  // Sprint L9: live photo/video requests. "Only verified server-side
+  // payment confirmation may activate a request" — this is the only place
+  // a media_requests row ever leaves 'pending_payment'. Idempotent: the
+  // status check means a duplicate delivery of the same event (which
+  // shouldn't even reach here given the provider_event_id check above,
+  // but is checked again for defense in depth) can't double-transition or
+  // double-record an earning.
+  if (event.status === "paid" && (payment.product_type === "live_photo" || payment.product_type === "live_video")) {
+    const { data: mediaRequest } = await admin
+      .from("media_requests")
+      .select("id, status")
+      .eq("payment_attempt_id", payment.id)
+      .maybeSingle();
+    if (mediaRequest && mediaRequest.status === "pending_payment") {
+      await admin.from("media_requests").update({ status: "pending_creator" }).eq("id", mediaRequest.id);
+      // Reuses the exact same earnings-recording function as chat day
+      // passes — commission math and idempotency don't differ by product.
+      await recordChatEarning(admin, {
+        paymentAttemptId: payment.id,
+        creatorId: payment.creator_id,
+        amountMinor: payment.amount_minor,
+        currency: payment.currency,
+        conversationId: payment.conversation_id,
+      });
+    }
   }
 
   await logAuditEvent({
