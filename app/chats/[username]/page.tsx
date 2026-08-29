@@ -33,8 +33,13 @@ import {
   getClientConversationSessionRepository,
 } from "@/lib/repositories/conversation-repository-client";
 import { ConversationSessionService } from "@/lib/services/conversation-session-service";
+import { getClientMessageRepository } from "@/lib/repositories/message-repository-client";
+import { createMessagingService } from "@/lib/services/messaging-service";
+import { TypingChannel } from "@/lib/realtime/typing-channel";
+import { startPresenceHeartbeat, formatPresenceLabel } from "@/lib/realtime/presence";
 import type { DiscoverCreator } from "@/lib/discover-types";
 import type { ConversationSummary } from "@/lib/conversation-types";
+import type { OptimisticMessage } from "@/lib/message-types";
 import {
   addMessage,
   findLatestSession,
@@ -425,7 +430,7 @@ function RealChatConversation({
   viewerUsername: string;
 }) {
   const activeHref = isFanViewer ? "/chats" : "/dashboard";
-  const [fanId, setFanId] = React.useState<string | null | undefined>(undefined);
+  const [ownId, setOwnId] = React.useState<string | null | undefined>(undefined);
   const [creator, setCreator] = React.useState<DiscoverCreator | null | undefined>(undefined);
   const [conversation, setConversation] = React.useState<ConversationSummary | null | undefined>(undefined);
   const [session, setSession] = React.useState<Awaited<ReturnType<ConversationSessionService["getActive"]>>>(null);
@@ -435,7 +440,21 @@ function RealChatConversation({
     () => new ConversationSessionService(getClientConversationSessionRepository()),
     []
   );
+  const messageRepo = React.useMemo(() => getClientMessageRepository(), []);
+  const messagingService = React.useMemo(
+    () => createMessagingService(messageRepo, getClientConversationSessionRepository()),
+    [messageRepo]
+  );
 
+  // --- Identity + conversation + session -----------------------------------
+  // Sprint L10: resolves BOTH viewer roles through getUserConversations()
+  // (Sprint L3) rather than getConversationByUsers() with a looked-up
+  // counterpart UUID — a creator viewer has no RLS-permitted way to read
+  // an arbitrary fan's profiles row just to find their id, but
+  // getUserConversations() already returns fanUsername/creatorUsername
+  // resolved server-side, scoped to the caller's own conversations. This
+  // also means a URL for a conversation the viewer isn't part of simply
+  // never appears in this list — never a client-trusted UUID.
   React.useEffect(() => {
     let cancelled = false;
     setLoadError(false);
@@ -444,24 +463,27 @@ function RealChatConversation({
       const {
         data: { user },
       } = await createSupabaseBrowserClient().auth.getUser();
-      if (!user) return;
+      if (!user || cancelled) return;
+      setOwnId(user.id);
+
+      if (isFanViewer) {
+        const foundCreator = await getClientCreatorRepository().getCreatorByUsername(creatorUsername);
+        if (cancelled) return;
+        setCreator(foundCreator);
+      }
+
+      const conversations = await getClientConversationRepository().getUserConversations(
+        user.id,
+        isFanViewer ? "fan" : "creator"
+      );
       if (cancelled) return;
-      setFanId(user.id);
+      const match = conversations.find((c) =>
+        isFanViewer ? c.creatorUsername === creatorUsername : c.fanUsername === fanUsername
+      );
+      setConversation(match ?? null);
+      if (!match) return;
 
-      const foundCreator = await getClientCreatorRepository().getCreatorByUsername(creatorUsername);
-      if (cancelled) return;
-      setCreator(foundCreator);
-      if (!foundCreator) return;
-
-      const fanUuid = isFanViewer ? user.id : null; // creator-viewer path isn't wired for real mode yet — see below
-      if (!fanUuid) return;
-
-      const foundConversation = await getClientConversationRepository().getConversationByUsers(fanUuid, foundCreator.id);
-      if (cancelled) return;
-      setConversation(foundConversation);
-      if (!foundConversation) return;
-
-      const activeSession = await sessionService.getActive(foundConversation.id);
+      const activeSession = await sessionService.getActive(match.id);
       if (cancelled) return;
       setSession(activeSession);
     }
@@ -472,25 +494,180 @@ function RealChatConversation({
     return () => {
       cancelled = true;
     };
-  }, [creatorUsername, isFanViewer, sessionService]);
+  }, [creatorUsername, fanUsername, isFanViewer, sessionService]);
 
-  if (!isFanViewer) {
-    // Creator-viewer real-mode inbox isn't wired yet (a separate, larger
-    // piece of work than this sprint's scope) — avoid rendering anything
-    // misleading rather than guess at it.
-    return (
-      <ChatShell activeHref={activeHref} username={viewerUsername}>
-        <EmptyState
-          icon={MessagesSquare}
-          title="Creator inbox is coming soon"
-          description="Manage media requests from your dashboard for now — the full conversation view for creators isn't available yet in production mode."
-          action={
-            <Button variant="outline" asChild>
-              <Link href="/dashboard">Go to dashboard</Link>
-            </Button>
-          }
-        />
-      </ChatShell>
+  // --- Messages --------------------------------------------------------------
+  const [messages, setMessages] = React.useState<OptimisticMessage[]>([]);
+  const [messagesLoading, setMessagesLoading] = React.useState(true);
+  const [loadingOlder, setLoadingOlder] = React.useState(false);
+  const [hasMoreHistory, setHasMoreHistory] = React.useState(true);
+  const [typingUsername, setTypingUsername] = React.useState<string | null>(null);
+  const [presenceLabel, setPresenceLabel] = React.useState<string | undefined>();
+  const typingChannelRef = React.useRef<TypingChannel | null>(null);
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const initialScrollDone = React.useRef(false);
+
+  // Initial page load (Sprint L4's cursor pagination, oldest-to-newest).
+  React.useEffect(() => {
+    if (!conversation) return;
+    let cancelled = false;
+    setMessagesLoading(true);
+    initialScrollDone.current = false;
+    messageRepo
+      .getMessages(conversation.id, { limit: 30 })
+      .then((page) => {
+        if (cancelled) return;
+        setMessages(page.map((m) => ({ ...m, deliveryState: "sent" as const })));
+        setHasMoreHistory(page.length === 30);
+        setMessagesLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) setMessagesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [conversation, messageRepo]);
+
+  // Scroll to the newest message once, after the first page loads.
+  React.useEffect(() => {
+    if (messagesLoading || initialScrollDone.current) return;
+    initialScrollDone.current = true;
+    messagesEndRef.current?.scrollIntoView({ block: "end" });
+  }, [messagesLoading]);
+
+  async function loadOlderMessages() {
+    if (!conversation || loadingOlder || !hasMoreHistory || messages.length === 0) return;
+    setLoadingOlder(true);
+    const container = scrollContainerRef.current;
+    const previousHeight = container?.scrollHeight ?? 0;
+    try {
+      const older = await messageRepo.getMessages(conversation.id, { cursor: messages[0].createdAt, limit: 30 });
+      setMessages((prev) => [...older.map((m) => ({ ...m, deliveryState: "sent" as const })), ...prev]);
+      setHasMoreHistory(older.length === 30);
+      // Retain scroll position — don't let loading older history yank the
+      // viewer's place in the conversation.
+      requestAnimationFrame(() => {
+        if (container) container.scrollTop = container.scrollHeight - previousHeight;
+      });
+    } catch {
+      // best-effort — leave hasMoreHistory as-is so a retry (scrolling up again) is possible
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
+
+  function handleScroll() {
+    const el = scrollContainerRef.current;
+    if (el && el.scrollTop < 80) void loadOlderMessages();
+  }
+
+  // Realtime subscription (Sprint L4) — reconciles against any optimistic
+  // entry with the same clientMessageId rather than appending a duplicate,
+  // and separately dedupes by id in case the same event is ever delivered
+  // twice.
+  React.useEffect(() => {
+    if (!conversation) return;
+    const unsubscribe = messageRepo.subscribeToMessages(conversation.id, (incoming) => {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === incoming.id)) return prev;
+        const optimisticIndex = incoming.clientMessageId
+          ? prev.findIndex((m) => m.clientMessageId === incoming.clientMessageId)
+          : -1;
+        if (optimisticIndex >= 0) {
+          const next = [...prev];
+          next[optimisticIndex] = { ...incoming, deliveryState: "sent" };
+          return next;
+        }
+        return [...prev, { ...incoming, deliveryState: "sent" }];
+      });
+    });
+    return unsubscribe;
+  }, [conversation, messageRepo]);
+
+  // Presence heartbeat (Sprint L4) — records that the viewer is active.
+  React.useEffect(() => startPresenceHeartbeat(), []);
+
+  // Read the counterpart's presence once, for the header label.
+  React.useEffect(() => {
+    if (!conversation) return;
+    let cancelled = false;
+    const counterpartId = isFanViewer ? conversation.creatorId : conversation.fanId;
+    (async () => {
+      try {
+        const { data } = await createSupabaseBrowserClient()
+          .from("user_presence")
+          .select("last_active_at")
+          .eq("user_id", counterpartId)
+          .maybeSingle();
+        if (!cancelled) setPresenceLabel(formatPresenceLabel(data?.last_active_at ?? null));
+      } catch {
+        // presence is informative only — silently skip on failure
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [conversation, isFanViewer]);
+
+  // Typing channel (Sprint L4).
+  React.useEffect(() => {
+    if (!conversation) return;
+    const channel = new TypingChannel(conversation.id, viewerUsername, (username, isTyping) => {
+      setTypingUsername(isTyping ? username : null);
+    });
+    typingChannelRef.current = channel;
+    return () => {
+      channel.dispose();
+      typingChannelRef.current = null;
+    };
+  }, [conversation, viewerUsername]);
+
+  // Read receipts (Sprint L4) — mark read whenever the visible thread
+  // changes while this conversation is open.
+  React.useEffect(() => {
+    if (!conversation || messages.length === 0) return;
+    const last = messages[messages.length - 1];
+    if (last.deliveryState !== "sent") return;
+    messageRepo.markConversationRead(conversation.id, last.id).catch(() => {});
+  }, [conversation, messages, messageRepo]);
+
+  async function handleSend(body: string) {
+    if (!conversation || !ownId) return;
+    typingChannelRef.current?.notifyStopped();
+    const clientMessageId = crypto.randomUUID();
+    const optimistic: OptimisticMessage = {
+      id: clientMessageId,
+      conversationId: conversation.id,
+      senderId: ownId,
+      senderUsername: viewerUsername,
+      body,
+      messageType: "text",
+      clientMessageId,
+      createdAt: new Date().toISOString(),
+      deliveryState: "sending",
+    };
+    setMessages((prev) => [...prev, optimistic]);
+
+    const result = await messagingService.send(conversation.id, body, clientMessageId);
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.clientMessageId !== clientMessageId) return m;
+        return result.ok && result.message ? { ...result.message, deliveryState: "sent" } : { ...m, deliveryState: "failed" };
+      })
+    );
+  }
+
+  async function handleRetry(failed: OptimisticMessage) {
+    if (!conversation || !failed.clientMessageId) return;
+    setMessages((prev) => prev.map((m) => (m.id === failed.id ? { ...m, deliveryState: "sending" } : m)));
+    const result = await messagingService.send(conversation.id, failed.body, failed.clientMessageId);
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.clientMessageId !== failed.clientMessageId) return m;
+        return result.ok && result.message ? { ...result.message, deliveryState: "sent" } : { ...m, deliveryState: "failed" };
+      })
     );
   }
 
@@ -511,7 +688,7 @@ function RealChatConversation({
     );
   }
 
-  if (fanId === undefined || creator === undefined || (creator && conversation === undefined)) {
+  if (ownId === undefined || (isFanViewer && creator === undefined) || conversation === undefined) {
     return (
       <ChatShell activeHref={activeHref} username={viewerUsername}>
         <div className="flex flex-col items-center gap-3 py-16 text-text-secondary">
@@ -522,7 +699,7 @@ function RealChatConversation({
     );
   }
 
-  if (!creator) {
+  if (isFanViewer && !creator) {
     return (
       <ChatShell activeHref={activeHref} username={viewerUsername}>
         <EmptyState
@@ -544,12 +721,18 @@ function RealChatConversation({
       <ChatShell activeHref={activeHref} username={viewerUsername}>
         <EmptyState
           icon={MessagesSquare}
-          title="No chat with this creator yet"
-          description="Unlock 24-hour chat access from their profile to start a conversation."
+          title={isFanViewer ? "No chat with this creator yet" : "No conversation with this fan yet"}
+          description={
+            isFanViewer
+              ? "Unlock 24-hour chat access from their profile to start a conversation."
+              : "This fan hasn't unlocked chat access with you yet."
+          }
           action={
-            <Button variant="outline" asChild>
-              <Link href={`/creators/${creatorUsername}`}>View profile</Link>
-            </Button>
+            isFanViewer ? (
+              <Button variant="outline" asChild>
+                <Link href={`/creators/${creatorUsername}`}>View profile</Link>
+              </Button>
+            ) : undefined
           }
         />
       </ChatShell>
@@ -557,14 +740,18 @@ function RealChatConversation({
   }
 
   const sessionActive = sessionService.isActive(session);
+  const headerUsername = isFanViewer ? creatorUsername : fanUsername;
+  const composerDisabled = !sessionActive;
+  const composerDisabledReason = !sessionActive ? "Chat access has ended. Renew to keep chatting." : undefined;
 
   return (
     <ChatShell activeHref={activeHref} username={viewerUsername}>
       <div className="flex h-[calc(100vh-8.5rem)] max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-surface md:h-[calc(100vh-6rem)]">
         <header className="flex flex-wrap items-center gap-2 border-b border-border p-3">
-          <Avatar src={creator.avatarUrl} alt={creator.username} size="md" />
+          <Avatar src={isFanViewer ? creator?.avatarUrl : undefined} alt={headerUsername} size="md" />
           <div className="flex min-w-0 flex-1 flex-col">
-            <h1 className="truncate font-semibold leading-tight">@{creator.username}</h1>
+            <h1 className="truncate font-semibold leading-tight">@{headerUsername}</h1>
+            {presenceLabel && <span className="text-xs text-text-secondary">{presenceLabel}</span>}
           </div>
           <div className="flex items-center gap-2" aria-live="polite">
             {sessionActive && session ? (
@@ -577,20 +764,61 @@ function RealChatConversation({
         </header>
 
         <div className="relative flex-1 overflow-hidden">
-          <div className="flex h-full flex-col gap-1 overflow-y-auto p-4">
-            <EmptyState
-              icon={MessagesSquare}
-              title="Messaging is being finalized for production"
-              description="Your paid access and live media requests below are fully real — the message thread view is still being connected. Check back soon."
-            />
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            className="flex h-full flex-col gap-1 overflow-y-auto p-4"
+          >
+            {messagesLoading ? (
+              <div className="flex flex-1 items-center justify-center text-text-secondary">
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+              </div>
+            ) : messages.length === 0 ? (
+              <EmptyState
+                icon={MessagesSquare}
+                title="Say hello"
+                description={`Your conversation with @${headerUsername} starts here. Say hello to break the ice.`}
+              />
+            ) : (
+              <>
+                {loadingOlder && (
+                  <div className="flex justify-center py-2 text-text-muted">
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  </div>
+                )}
+                {messages.map((message) => (
+                  <RealMessageRow
+                    key={message.id}
+                    message={message}
+                    isOwn={message.senderId === ownId}
+                    onRetry={() => handleRetry(message)}
+                  />
+                ))}
+              </>
+            )}
+            <div ref={messagesEndRef} />
           </div>
         </div>
 
-        <MediaRequestPanel
-          conversationId={conversation.id}
-          sessionActive={sessionActive}
-          photoPriceLabel={`$${creator.photoPrice}`}
-          videoPriceLabel={`$${creator.videoPrice}`}
+        {typingUsername && (
+          <p className="border-t border-border px-3 pt-2 text-xs italic text-text-muted">{typingUsername} is typing…</p>
+        )}
+
+        {isFanViewer && (
+          <MediaRequestPanel
+            conversationId={conversation.id}
+            sessionActive={sessionActive}
+            photoPriceLabel={`$${creator?.photoPrice ?? "0.00"}`}
+            videoPriceLabel={`$${creator?.videoPrice ?? "0.00"}`}
+          />
+        )}
+
+        <ChatComposer
+          disabled={composerDisabled}
+          disabledReason={composerDisabledReason}
+          onSend={handleSend}
+          onTyping={() => typingChannelRef.current?.notifyTyping()}
+          onStopTyping={() => typingChannelRef.current?.notifyStopped()}
         />
 
         {!sessionActive && (
@@ -599,16 +827,58 @@ function RealChatConversation({
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber" aria-hidden="true" />
               <div className="flex flex-col gap-0.5">
                 <p className="text-sm font-medium text-text-primary">Chat access has ended</p>
-                <p className="text-xs text-text-secondary">Renew from this creator&apos;s profile to unlock another 24 hours.</p>
+                <p className="text-xs text-text-secondary">
+                  {isFanViewer
+                    ? "Renew from this creator's profile to unlock another 24 hours."
+                    : "This fan's access has ended. They can renew from your profile."}
+                </p>
               </div>
             </div>
-            <Button variant="outline" size="sm" asChild className="w-fit">
-              <Link href={`/creators/${creatorUsername}`}>View profile to renew</Link>
-            </Button>
+            {isFanViewer && (
+              <Button variant="outline" size="sm" asChild className="w-fit">
+                <Link href={`/creators/${creatorUsername}`}>View profile to renew</Link>
+              </Button>
+            )}
           </div>
         )}
       </div>
     </ChatShell>
+  );
+}
+
+function RealMessageRow({
+  message,
+  isOwn,
+  onRetry,
+}: {
+  message: OptimisticMessage;
+  isOwn: boolean;
+  onRetry: () => void;
+}) {
+  const asChatMessage = {
+    id: message.id,
+    sessionId: message.conversationId,
+    senderRole: (isOwn ? "fan" : "creator") as "fan" | "creator", // only used by ChatMessageBubble to decide alignment
+    senderUsername: message.senderUsername,
+    body: message.body,
+    sentAt: message.createdAt,
+    type: "text" as const,
+  };
+  return (
+    <div className="flex flex-col gap-1">
+      <ChatMessageBubble message={asChatMessage} viewerRole={isOwn ? "fan" : "creator"} />
+      {message.deliveryState === "sending" && (
+        <span className={`text-[11px] text-text-muted ${isOwn ? "self-end pr-1" : "self-start pl-1"}`}>Sending…</span>
+      )}
+      {message.deliveryState === "failed" && (
+        <span className={`flex items-center gap-1.5 text-[11px] text-danger ${isOwn ? "self-end pr-1" : "self-start pl-1"}`}>
+          Failed to send
+          <button type="button" onClick={onRetry} className="underline underline-offset-2">
+            Retry
+          </button>
+        </span>
+      )}
+    </div>
   );
 }
 
