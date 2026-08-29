@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Camera, Loader2, Video } from "lucide-react";
+import { Camera, Flag, Loader2, Video } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/modal";
 import { useToast } from "@/components/ui/use-toast";
 import { getMediaRequestsForConversation, requestMedia, getMediaSignedUrl } from "@/lib/media-requests/client";
+import { ReportDialog } from "@/components/report-dialog";
 import type { MediaRequest, MediaRequestType } from "@/lib/media-request-types";
 
 const STATUS_LABEL: Record<MediaRequest["status"], string> = {
@@ -49,11 +50,19 @@ export function MediaRequestPanel({
   sessionActive,
   photoPriceLabel,
   videoPriceLabel,
+  counterpartId,
+  counterpartUsername,
+  viewerRole,
 }: {
   conversationId: string;
   sessionActive: boolean;
   photoPriceLabel: string;
   videoPriceLabel: string;
+  /** Needed only for the per-request "Report" action (Sprint L11) — the
+   * panel otherwise has no reason to know who the counterpart is. */
+  counterpartId: string;
+  counterpartUsername: string;
+  viewerRole: "fan" | "creator";
 }) {
   const { toast } = useToast();
   const [requests, setRequests] = React.useState<MediaRequest[]>([]);
@@ -94,7 +103,14 @@ export function MediaRequestPanel({
       {requests.length > 0 && (
         <div className="flex flex-col gap-1.5">
           {requests.map((request) => (
-            <MediaRequestStatusRow key={request.id} request={request} />
+            <MediaRequestStatusRow
+              key={request.id}
+              request={request}
+              counterpartId={counterpartId}
+              counterpartUsername={counterpartUsername}
+              viewerRole={viewerRole}
+              conversationId={conversationId}
+            />
           ))}
         </div>
       )}
@@ -172,10 +188,23 @@ function RequestConfirmModal({
   );
 }
 
-function MediaRequestStatusRow({ request }: { request: MediaRequest }) {
+function MediaRequestStatusRow({
+  request,
+  counterpartId,
+  counterpartUsername,
+  viewerRole,
+  conversationId,
+}: {
+  request: MediaRequest;
+  counterpartId: string;
+  counterpartUsername: string;
+  viewerRole: "fan" | "creator";
+  conversationId: string;
+}) {
   const Icon = request.requestType === "live_photo" ? Camera : Video;
   const [mediaUrl, setMediaUrl] = React.useState<string | null>(null);
   const [loadingUrl, setLoadingUrl] = React.useState(false);
+  const [reportOpen, setReportOpen] = React.useState(false);
 
   async function handleView() {
     setLoadingUrl(true);
@@ -198,7 +227,20 @@ function MediaRequestStatusRow({ request }: { request: MediaRequest }) {
               {request.requestType === "live_photo" ? "Live Photo" : "Live Video"}
             </span>
           </div>
-          <span className={`text-xs font-medium ${STATUS_TONE[request.status]}`}>{STATUS_LABEL[request.status]}</span>
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-medium ${STATUS_TONE[request.status]}`}>{STATUS_LABEL[request.status]}</span>
+            {request.paymentAttemptId && (
+              <button
+                type="button"
+                onClick={() => setReportOpen(true)}
+                className="text-text-muted hover:text-danger"
+                aria-label="Report this media request"
+                title="Report this media request"
+              >
+                <Flag className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </div>
         {request.status === "fulfilled" && (
           <div className="flex flex-col gap-2">
@@ -216,6 +258,21 @@ function MediaRequestStatusRow({ request }: { request: MediaRequest }) {
           </div>
         )}
       </CardContent>
+      {request.paymentAttemptId && (
+        <ReportDialog
+          open={reportOpen}
+          onOpenChange={setReportOpen}
+          context={{
+            kind: "media_request",
+            label: request.requestType === "live_photo" ? "this live photo request" : "this live video request",
+            paymentAttemptId: request.paymentAttemptId,
+          }}
+          counterpartUsername={counterpartUsername}
+          viewerRole={viewerRole}
+          reportedUserId={counterpartId}
+          conversationId={conversationId}
+        />
+      )}
     </Card>
   );
 }
