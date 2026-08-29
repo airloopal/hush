@@ -580,6 +580,28 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["media_requests"]["Insert"]>;
         Relationships: [];
       };
+      maintenance_job_runs: {
+        Row: {
+          id: string;
+          job_name: string;
+          started_at: string;
+          finished_at: string | null;
+          success: boolean | null;
+          detail: string | null;
+          error_message: string | null;
+        };
+        Insert: {
+          id?: string;
+          job_name: string;
+          started_at?: string;
+          finished_at?: string | null;
+          success?: boolean | null;
+          detail?: string | null;
+          error_message?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["maintenance_job_runs"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       creator_balances: {
@@ -750,6 +772,14 @@ export interface Database {
       is_blocked_pair: {
         Args: { p_user_a: string; p_user_b: string };
         Returns: boolean;
+      };
+      run_scheduled_settlement: {
+        Args: Record<string, never>;
+        Returns: undefined;
+      };
+      run_scheduled_media_expiry: {
+        Args: Record<string, never>;
+        Returns: undefined;
       };
     };
     Enums: {
