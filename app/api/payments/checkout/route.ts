@@ -88,6 +88,16 @@ export async function POST(request: NextRequest) {
   const repositories = getRepositories();
   const creator = await repositories.creators.getCreatorByUsername(body.creatorUsername);
 
+  let isBlocked = false;
+  if (creator) {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase.rpc("is_blocked_pair", {
+      p_user_a: currentUser.user.id,
+      p_user_b: creator.id,
+    });
+    isBlocked = Boolean(data);
+  }
+
   const paymentService = createPaymentService(
     isDemoMode() ? demoPaymentRepository : supabasePaymentRepository,
     repositories.conversations,
@@ -99,6 +109,7 @@ export async function POST(request: NextRequest) {
     fanAccountActive: currentUser.user.profile.status === "active",
     creatorId: creator?.id ?? null,
     creatorApproved: Boolean(creator),
+    isBlocked,
     clientIdempotencyKey: idempotencyKey,
     returnUrl: `${origin}/payments/return`,
   });

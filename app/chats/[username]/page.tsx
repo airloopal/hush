@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { AlertCircle, Loader2, MessagesSquare, ShieldAlert, UserX } from "lucide-react";
+import { AlertCircle, Flag, Loader2, MessagesSquare, ShieldAlert, UserX } from "lucide-react";
 
 import { NavigationBar } from "@/components/navigation-bar";
 import { BottomNav } from "@/components/bottom-nav";
@@ -20,6 +20,9 @@ import { BuyMediaModal } from "@/components/buy-media-modal";
 import { SafetyMenu } from "@/components/safety-menu";
 import { MediaRequestCard } from "@/components/media-request-card";
 import { MediaRequestPanel } from "@/components/media-request-panel";
+import { RealSafetyMenu } from "@/components/real-safety-menu";
+import { ReportDialog } from "@/components/report-dialog";
+import { isBlockedPair, hasIBlocked } from "@/lib/moderation/blocks-client";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useRequireAccount } from "@/lib/use-account-guard";
 import { hasAdultAccess } from "@/lib/account";
@@ -435,6 +438,8 @@ function RealChatConversation({
   const [conversation, setConversation] = React.useState<ConversationSummary | null | undefined>(undefined);
   const [session, setSession] = React.useState<Awaited<ReturnType<ConversationSessionService["getActive"]>>>(null);
   const [loadError, setLoadError] = React.useState(false);
+  const [isBlocked, setIsBlocked] = React.useState(false);
+  const [hasIBlockedThem, setHasIBlockedThem] = React.useState(false);
 
   const sessionService = React.useMemo(
     () => new ConversationSessionService(getClientConversationSessionRepository()),
@@ -483,9 +488,16 @@ function RealChatConversation({
       setConversation(match ?? null);
       if (!match) return;
 
-      const activeSession = await sessionService.getActive(match.id);
+      const counterpartId = isFanViewer ? match.creatorId : match.fanId;
+      const [activeSession, blocked, iBlockedThem] = await Promise.all([
+        sessionService.getActive(match.id),
+        isBlockedPair(counterpartId),
+        hasIBlocked(counterpartId),
+      ]);
       if (cancelled) return;
       setSession(activeSession);
+      setIsBlocked(blocked);
+      setHasIBlockedThem(iBlockedThem);
     }
 
     load().catch(() => {
@@ -589,9 +601,12 @@ function RealChatConversation({
   // Presence heartbeat (Sprint L4) — records that the viewer is active.
   React.useEffect(() => startPresenceHeartbeat(), []);
 
-  // Read the counterpart's presence once, for the header label.
+  // Read the counterpart's presence once, for the header label. Skipped
+  // entirely when blocked (§L11 "typing/presence interaction should stop
+  // where appropriate") — there's no reason to show a blocked user's
+  // presence.
   React.useEffect(() => {
-    if (!conversation) return;
+    if (!conversation || isBlocked) return;
     let cancelled = false;
     const counterpartId = isFanViewer ? conversation.creatorId : conversation.fanId;
     (async () => {
@@ -609,11 +624,16 @@ function RealChatConversation({
     return () => {
       cancelled = true;
     };
-  }, [conversation, isFanViewer]);
+  }, [conversation, isFanViewer, isBlocked]);
 
-  // Typing channel (Sprint L4).
+  // Typing channel (Sprint L4) — not created at all when blocked, so a
+  // blocked pair can neither send nor receive typing broadcasts.
   React.useEffect(() => {
-    if (!conversation) return;
+    if (!conversation || isBlocked) {
+      typingChannelRef.current = null;
+      setTypingUsername(null);
+      return;
+    }
     const channel = new TypingChannel(conversation.id, viewerUsername, (username, isTyping) => {
       setTypingUsername(isTyping ? username : null);
     });
@@ -622,7 +642,7 @@ function RealChatConversation({
       channel.dispose();
       typingChannelRef.current = null;
     };
-  }, [conversation, viewerUsername]);
+  }, [conversation, viewerUsername, isBlocked]);
 
   // Read receipts (Sprint L4) — mark read whenever the visible thread
   // changes while this conversation is open.
@@ -741,8 +761,13 @@ function RealChatConversation({
 
   const sessionActive = sessionService.isActive(session);
   const headerUsername = isFanViewer ? creatorUsername : fanUsername;
-  const composerDisabled = !sessionActive;
-  const composerDisabledReason = !sessionActive ? "Chat access has ended. Renew to keep chatting." : undefined;
+  const counterpartId = isFanViewer ? conversation.creatorId : conversation.fanId;
+  const composerDisabled = !sessionActive || isBlocked;
+  const composerDisabledReason = isBlocked
+    ? "You can't message this person."
+    : !sessionActive
+      ? "Chat access has ended. Renew to keep chatting."
+      : undefined;
 
   return (
     <ChatShell activeHref={activeHref} username={viewerUsername}>
@@ -760,8 +785,32 @@ function RealChatConversation({
               <span className="font-mono-data text-xs text-danger">Expired</span>
             )}
             <StatusBadge status={sessionActive ? "live" : "expired"} />
+            <RealSafetyMenu
+              counterpartId={counterpartId}
+              counterpartUsername={headerUsername}
+              conversationId={conversation.id}
+              viewerRole={isFanViewer ? "fan" : "creator"}
+              isBlocked={hasIBlockedThem}
+              onBlockedChange={(blocked) => {
+                setHasIBlockedThem(blocked);
+                setIsBlocked(blocked || isBlocked);
+                // Re-confirm the mutual-effect flag from the server rather
+                // than trusting this optimistic guess (the other party
+                // may independently have blocked/unblocked too).
+                isBlockedPair(counterpartId).then(setIsBlocked).catch(() => {});
+              }}
+            />
           </div>
         </header>
+
+        {isBlocked && (
+          <div className="flex items-center gap-2 border-b border-border bg-danger/5 px-3 py-2 text-xs text-danger" aria-live="polite">
+            <UserX className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            {hasIBlockedThem
+              ? `You've blocked @${headerUsername} — they can't message you, request media, or start a new chat with you.`
+              : `You can no longer interact with @${headerUsername}.`}
+          </div>
+        )}
 
         <div className="relative flex-1 overflow-hidden">
           <div
@@ -792,6 +841,10 @@ function RealChatConversation({
                     message={message}
                     isOwn={message.senderId === ownId}
                     onRetry={() => handleRetry(message)}
+                    counterpartId={counterpartId}
+                    counterpartUsername={headerUsername}
+                    viewerRole={isFanViewer ? "fan" : "creator"}
+                    conversationId={conversation.id}
                   />
                 ))}
               </>
@@ -807,9 +860,12 @@ function RealChatConversation({
         {isFanViewer && (
           <MediaRequestPanel
             conversationId={conversation.id}
-            sessionActive={sessionActive}
+            sessionActive={sessionActive && !isBlocked}
             photoPriceLabel={`$${creator?.photoPrice ?? "0.00"}`}
             videoPriceLabel={`$${creator?.videoPrice ?? "0.00"}`}
+            counterpartId={counterpartId}
+            counterpartUsername={headerUsername}
+            viewerRole="fan"
           />
         )}
 
@@ -850,11 +906,20 @@ function RealMessageRow({
   message,
   isOwn,
   onRetry,
+  counterpartId,
+  counterpartUsername,
+  viewerRole,
+  conversationId,
 }: {
   message: OptimisticMessage;
   isOwn: boolean;
   onRetry: () => void;
+  counterpartId: string;
+  counterpartUsername: string;
+  viewerRole: "fan" | "creator";
+  conversationId: string;
 }) {
+  const [reportOpen, setReportOpen] = React.useState(false);
   const asChatMessage = {
     id: message.id,
     sessionId: message.conversationId,
@@ -865,8 +930,23 @@ function RealMessageRow({
     type: "text" as const,
   };
   return (
-    <div className="flex flex-col gap-1">
-      <ChatMessageBubble message={asChatMessage} viewerRole={isOwn ? "fan" : "creator"} />
+    <div className="group flex flex-col gap-1">
+      <div className={`flex items-end gap-1 ${isOwn ? "flex-row-reverse" : ""}`}>
+        <div className="min-w-0 flex-1">
+          <ChatMessageBubble message={asChatMessage} viewerRole={isOwn ? "fan" : "creator"} />
+        </div>
+        {!isOwn && (
+          <button
+            type="button"
+            onClick={() => setReportOpen(true)}
+            className="mb-1 shrink-0 text-text-muted opacity-0 transition-opacity hover:text-danger group-hover:opacity-100"
+            aria-label="Report this message"
+            title="Report this message"
+          >
+            <Flag className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
       {message.deliveryState === "sending" && (
         <span className={`text-[11px] text-text-muted ${isOwn ? "self-end pr-1" : "self-start pl-1"}`}>Sending…</span>
       )}
@@ -877,6 +957,17 @@ function RealMessageRow({
             Retry
           </button>
         </span>
+      )}
+      {!isOwn && (
+        <ReportDialog
+          open={reportOpen}
+          onOpenChange={setReportOpen}
+          context={{ kind: "message", label: "this message", messageId: message.id, messageSnippet: message.body }}
+          counterpartUsername={counterpartUsername}
+          viewerRole={viewerRole}
+          reportedUserId={counterpartId}
+          conversationId={conversationId}
+        />
       )}
     </div>
   );
